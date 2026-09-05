@@ -318,6 +318,28 @@
 
         #profile-avatar-grid > *, #profile-frame-grid > *, #daily-reward-grid > * { min-width: 0; }
         #profile-avatar-grid canvas { width: 100%; max-width: 58px; height: auto; aspect-ratio: 1; }
+        .daily-reward-dock {
+            position: fixed;
+            top: 76px;
+            right: 12px;
+            z-index: 28;
+            width: min(330px, calc(100vw - 24px));
+            padding: 8px;
+            border: 2px solid #6f3c18;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(25,18,10,.97), rgba(51,29,12,.96));
+            box-shadow: 0 8px 24px rgba(0,0,0,.42), 0 0 18px rgba(123,216,255,.1);
+        }
+        .daily-reward-dock #daily-reward-grid { gap: 3px; }
+        .daily-reward-dock #daily-reward-grid > button { min-width: 0; height: 48px; }
+        .daily-reward-dock #daily-reward-grid img { width: 16px; height: 16px; object-fit: contain; }
+        @media (max-width: 640px) {
+            .daily-reward-dock { top: 76px; right: 8px; width: min(292px, calc(100vw - 16px)); padding: 6px; }
+            .daily-reward-dock #daily-reward-grid > button { height: 44px; }
+        }
+        @media (orientation: landscape) and (max-height: 600px) {
+            .daily-reward-dock { top: 54px; right: 8px; transform: scale(.9); transform-origin: top right; }
+        }
 
         .modal-content.hidden { display: none !important; }
         .modal-content.flex { display: flex !important; }
@@ -875,16 +897,16 @@
             <i class="fa-solid fa-shield-halved absolute right-6 text-5xl text-white/20 transform rotate-12 pointer-events-none"></i>
         </button>
 
-        <section class="w-full mt-3 p-3 rounded-xl border-[3px] border-[#6f3c18] bg-[linear-gradient(135deg,rgba(25,18,10,.96),rgba(51,29,12,.94))] shadow-[0_8px_24px_rgba(0,0,0,.35)]" aria-labelledby="daily-reward-title">
+        <section id="daily-reward-dock" class="daily-reward-dock" aria-labelledby="daily-reward-title">
             <div class="flex items-center justify-between gap-2 mb-2">
                 <div class="flex items-center gap-2 min-w-0">
-                    <span class="w-8 h-8 rounded-lg bg-[#1e4660] border-2 border-[#7bd8ff] flex items-center justify-center text-lg shadow-[0_0_12px_rgba(123,216,255,.35)]">⚡</span>
+                    <span class="w-7 h-7 rounded-lg bg-[#1e4660] border-2 border-[#7bd8ff] flex items-center justify-center text-sm shadow-[0_0_12px_rgba(123,216,255,.35)]">⚡</span>
                     <div class="min-w-0 text-left">
-                        <h2 id="daily-reward-title" class="font-io text-white text-sm sm:text-base truncate">7 GÜNLÜK FIRTINA ÖDÜLÜ</h2>
-                        <p id="daily-reward-status" class="text-[9px] text-[#b9d9e8] font-black uppercase tracking-wide truncate">Sunucu ödülleri yükleniyor...</p>
+                        <h2 id="daily-reward-title" class="font-io text-white text-xs truncate">7 GÜNLÜK ÖDÜL</h2>
+                        <p id="daily-reward-status" class="text-[8px] text-[#b9d9e8] font-black uppercase tracking-wide truncate">Sunucu ödülleri yükleniyor...</p>
                     </div>
                 </div>
-                <button id="daily-reward-claim" onclick="claimDailyReward()" class="btn-3d btn-yellow px-2.5 py-1.5 font-io text-[10px] sm:text-xs whitespace-nowrap" type="button">YÜKLENİYOR</button>
+                <button id="daily-reward-claim" onclick="claimDailyReward()" class="btn-3d btn-yellow px-2 py-1 font-io text-[9px] whitespace-nowrap" type="button">YÜKLENİYOR</button>
             </div>
             <div id="daily-reward-grid" class="grid grid-cols-7 gap-1"></div>
         </section>
@@ -930,7 +952,29 @@
     <!-- ================== MODALLAR ================== -->
     <div id="modalOverlay" class="fixed inset-0 bg-black/75 z-50 hidden flex items-center justify-center p-3 sm:p-4 backdrop-blur-sm" onclick="closeAllModals()">
         
-        <!-- 1. LOGIN MODALI -->
+        <!-- 1. GÜNLÜK ÖDÜL ÖNİZLEMESİ -->
+        <div id="dailyRewardPreviewModal" class="panel-wood w-full max-w-[440px] hidden flex-col relative modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header-bar">
+                <div class="modal-badge-title"><i class="fa-solid fa-gift text-sm"></i> ÖDÜL ÖNİZLEMESİ</div>
+                <button onclick="closeAllModals()" class="modal-close-btn" title="Kapat">✕</button>
+            </div>
+            <div class="panel-inset p-3 sm:p-4 mt-1 flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div id="daily-preview-title" class="font-io text-lg text-white stroke-text">Gün 7</div>
+                        <div id="daily-preview-subtitle" class="text-[10px] text-[#b9d9e8] font-black">Ödül oyunda böyle görünecek</div>
+                    </div>
+                    <div id="daily-preview-value" class="font-io text-sm text-[#f7c02d]"></div>
+                </div>
+                <div class="relative h-[260px] sm:h-[300px] rounded-xl overflow-hidden border-2 border-[#7bd8ff] bg-[radial-gradient(circle_at_50%_40%,#1d5272,#071421_72%)] shadow-[inset_0_0_30px_rgba(123,216,255,.25),0_0_24px_rgba(123,216,255,.2)]">
+                    <canvas id="daily-preview-canvas" width="440" height="300" class="w-full h-full"></canvas>
+                    <div class="absolute left-2 right-2 bottom-2 text-center text-[9px] text-white/70 font-black pointer-events-none">CANLI OYUN İÇİ GÖRÜNÜM</div>
+                </div>
+                <button id="daily-preview-claim" onclick="claimDailyReward()" class="btn-3d btn-yellow w-full py-2 font-io text-xs">ÖDÜLÜ AL</button>
+            </div>
+        </div>
+
+        <!-- 2. LOGIN MODALI -->
         <div id="loginModal" class="panel-wood w-full max-w-[400px] hidden flex-col relative modal-content" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
                 <div class="modal-badge-title"><i class="fa-solid fa-right-to-bracket text-sm"></i> LOGIN</div>
@@ -2026,7 +2070,7 @@
         /* ════════════════════════════════════════════════════════════════
            4. TOAST VE MODAL YÖNETİMİ
         ════════════════════════════════════════════════════════════════ */
-        const ALL_MODALS = ['loginModal', 'registerModal', 'profileModal', 'levelRewardsModal', 'settingsModal', 'serverModal', 'cosmeticsModal', 'shopModal', 'leadersModal', 'partyModal', 'helpModal', 'newsModal'];
+        const ALL_MODALS = ['loginModal', 'registerModal', 'profileModal', 'levelRewardsModal', 'dailyRewardPreviewModal', 'settingsModal', 'serverModal', 'cosmeticsModal', 'shopModal', 'leadersModal', 'partyModal', 'helpModal', 'newsModal'];
 
         function openModal(id) {
             const overlay = document.getElementById('modalOverlay');
@@ -2050,6 +2094,8 @@
 
         function closeAllModals() {
             const overlay = document.getElementById('modalOverlay');
+            cancelAnimationFrame(_dailyPreviewRaf);
+            _dailyPreviewRaf = 0;
             overlay.classList.add('hidden');
             overlay.style.display = 'none';
             ALL_MODALS.forEach(m => {
@@ -2318,6 +2364,60 @@
 
         let _dailyRewardState = null;
         let _dailyRewardClaiming = false;
+        let _dailyPreviewDay = 7;
+        let _dailyPreviewRaf = 0;
+
+        function openDailyRewardPreview(day) {
+            _dailyPreviewDay = Number(day) || 7;
+            openModal('dailyRewardPreviewModal');
+            updateDailyRewardPreview();
+            cancelAnimationFrame(_dailyPreviewRaf);
+            renderDailyRewardPreviewFrame();
+        }
+
+        function updateDailyRewardPreview() {
+            const rewards = _dailyRewardState?.rewards || [];
+            const reward = rewards.find(item => item.day === _dailyPreviewDay) || { day: _dailyPreviewDay, kind: _dailyPreviewDay === 7 ? 'cosmetic' : 'coins', amount: 0, label: _dailyPreviewDay === 7 ? 'Thor: Fırtına Zırhı' : 'Günlük Altın', icon: '🪙' };
+            const title = document.getElementById('daily-preview-title');
+            const subtitle = document.getElementById('daily-preview-subtitle');
+            const value = document.getElementById('daily-preview-value');
+            const claim = document.getElementById('daily-preview-claim');
+            if (title) title.textContent = `Gün ${reward.day} • ${reward.label}`;
+            if (subtitle) subtitle.textContent = reward.kind === 'cosmetic' ? 'Thor zırhının gerçek oyun içi görünümü' : 'Ödülün oyun hesabındaki gerçek karşılığı';
+            if (value) value.innerHTML = reward.kind === 'coins' ? `<img src="asset/gold.png" class="inline-block w-4 h-4 object-contain align-middle" alt="Altın"> ${reward.amount}` : reward.icon;
+            const claimed = Boolean(_dailyRewardState?.claimedDays?.includes(reward.day));
+            if (claim) {
+                claim.disabled = Boolean(_dailyRewardClaiming || claimed || !_dailyRewardState?.canClaim || reward.day !== _dailyRewardState?.nextDay);
+                claim.textContent = claimed ? 'ALINDI' : reward.day === _dailyRewardState?.nextDay ? 'ÖDÜLÜ AL' : 'KİLİTLİ';
+            }
+        }
+
+        function renderDailyRewardPreviewFrame() {
+            const modal = document.getElementById('dailyRewardPreviewModal');
+            const canvas = document.getElementById('daily-preview-canvas');
+            if (!modal || !canvas || modal.style.display === 'none') return;
+            const context = canvas.getContext('2d');
+            const width = canvas.width, height = canvas.height;
+            const time = performance.now();
+            context.clearRect(0, 0, width, height);
+            context.save();
+            context.globalAlpha = .25;
+            context.strokeStyle = '#7bd8ff';
+            context.lineWidth = 1;
+            for (let x = -height; x < width + height; x += 34) { context.beginPath(); context.moveTo(x, 0); context.lineTo(x + height, height); context.stroke(); }
+            context.globalAlpha = 1;
+            if (_dailyPreviewDay === 7) {
+                drawExactInGamePlayer(context, width / 2, height * .62, 'skin_thor_stormforged', 'ki_tier_4', time, 1.35);
+            } else {
+                const image = getLoadedImage('asset/gold.png');
+                if (image.complete && image.naturalWidth > 0) context.drawImage(image, width / 2 - 58, height / 2 - 58, 116, 116);
+                context.fillStyle = '#fff4b0'; context.font = '900 24px Lilita One, sans-serif'; context.textAlign = 'center';
+                const reward = _dailyRewardState?.rewards?.find(item => item.day === _dailyPreviewDay);
+                context.fillText(reward?.label || 'Ödül', width / 2, height * .78);
+            }
+            context.restore();
+            _dailyPreviewRaf = requestAnimationFrame(renderDailyRewardPreviewFrame);
+        }
 
         function renderDailyRewards(status = null) {
             const grid = document.getElementById('daily-reward-grid');
@@ -2326,10 +2426,10 @@
             if (!grid || !statusEl || !claimBtn) return;
             _dailyRewardState = status;
             const rewards = status?.rewards || [
-                { day: 1, icon: '🪙', label: '+100 Altın' }, { day: 2, icon: '🪙', label: '+150 Altın' },
-                { day: 3, icon: '🪙', label: '+250 Altın' }, { day: 4, icon: '✨', label: '+250 XP' },
-                { day: 5, icon: '🪙', label: '+400 Altın' }, { day: 6, icon: '🪙', label: '+600 Altın' },
-                { day: 7, icon: '⚡', label: 'Thor Zırhı' }
+                { day: 1, kind: 'coins', amount: 100, icon: '🪙', label: '+100 Altın' }, { day: 2, kind: 'coins', amount: 150, icon: '🪙', label: '+150 Altın' },
+                { day: 3, kind: 'coins', amount: 250, icon: '🪙', label: '+250 Altın' }, { day: 4, kind: 'xp', amount: 250, icon: '✨', label: '+250 XP' },
+                { day: 5, kind: 'coins', amount: 400, icon: '🪙', label: '+400 Altın' }, { day: 6, kind: 'coins', amount: 600, icon: '🪙', label: '+600 Altın' },
+                { day: 7, kind: 'cosmetic', icon: '⚡', label: 'Thor Zırhı' }
             ];
             const claimedDays = new Set(status?.claimedDays || []);
             grid.innerHTML = rewards.map(reward => {
@@ -2340,7 +2440,8 @@
                     : active
                         ? 'bg-[#214d68] border-[#7bd8ff] text-white shadow-[0_0_10px_rgba(123,216,255,.5)]'
                         : 'bg-black/30 border-white/10 text-white/45';
-                return `<div class="min-w-0 rounded-md border-2 ${cardClass} p-1 text-center" title="${reward.label}"><div class="text-[9px] font-black">GÜN ${reward.day}</div><div class="text-base leading-5">${claimed ? '✓' : reward.icon}</div><div class="text-[8px] font-black truncate">${claimed ? 'ALINDI' : reward.day === 7 ? 'SKIN' : reward.label.replace('+', '')}</div></div>`;
+                const icon = claimed ? '✓' : reward.kind === 'coins' ? '<img src="asset/gold.png" alt="Altın">' : reward.icon;
+                return `<button type="button" onclick="openDailyRewardPreview(${reward.day})" class="min-w-0 rounded-md border-2 ${cardClass} p-1 text-center cursor-pointer hover:brightness-125" title="${reward.label}"><div class="text-[8px] font-black">GÜN ${reward.day}</div><div class="text-base leading-5 flex justify-center items-center">${icon}</div><div class="text-[7px] font-black truncate">${claimed ? 'ALINDI' : reward.kind === 'coins' ? `${reward.amount} ALTIN` : reward.day === 7 ? 'THOR' : reward.label.replace('+', '')}</div></button>`;
             }).join('');
 
             if (!_authToken) {
@@ -2365,6 +2466,7 @@
             claimBtn.disabled = _dailyRewardClaiming || !status.canClaim;
             claimBtn.textContent = status.completed ? 'TAMAMLANDI' : status.claimedToday ? 'YARIN GEL' : _dailyRewardClaiming ? 'ALINIYOR...' : `GÜN ${status.nextDay} ÖDÜLÜ`;
             claimBtn.onclick = claimDailyReward;
+            updateDailyRewardPreview();
         }
 
         async function loadDailyRewards() {
