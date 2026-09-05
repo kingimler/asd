@@ -153,6 +153,65 @@ function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
 
 let accountData = { users: {}, clans: {}, leaderboard: {}, recentDeaths: [], nextId: 1 };
 
+const DAILY_REWARD_ITEM_ID = 'skin_thor_stormforged';
+const PROFILE_FRAME_IDS = new Set(['frame_woodland', 'frame_iron', 'frame_emerald', 'frame_frost', 'frame_royal', 'frame_arcane', 'frame_storm', 'frame_obsidian']);
+const PROFILE_FREE_SKIN_IDS = new Set(['wolf', 'default']);
+const DAILY_REWARDS = [
+  { day: 1, kind: 'coins', amount: 100, label: '+100 Altın', icon: '🪙' },
+  { day: 2, kind: 'coins', amount: 150, label: '+150 Altın', icon: '🪙' },
+  { day: 3, kind: 'coins', amount: 250, label: '+250 Altın', icon: '🪙' },
+  { day: 4, kind: 'xp', amount: 250, label: '+250 XP', icon: '✨' },
+  { day: 5, kind: 'coins', amount: 400, label: '+400 Altın', icon: '🪙' },
+  { day: 6, kind: 'coins', amount: 600, label: '+600 Altın', icon: '🪙' },
+  { day: 7, kind: 'cosmetic', itemId: DAILY_REWARD_ITEM_ID, label: 'Thor: Fırtına Zırhı', icon: '⚡' }
+];
+
+function utcDateKey(timestamp = Date.now()) {
+  return new Date(timestamp).toISOString().slice(0, 10);
+}
+
+function dayDistance(fromDate, toDate) {
+  if (!fromDate) return null;
+  const from = Date.parse(`${fromDate}T00:00:00.000Z`);
+  const to = Date.parse(`${toDate}T00:00:00.000Z`);
+  if (!Number.isFinite(from) || !Number.isFinite(to)) return null;
+  return Math.round((to - from) / 86400000);
+}
+
+function normalizeDailyRewardState(raw) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const streak = Math.max(0, Math.min(7, Number(source.streak) || 0));
+  const claimedDays = Array.isArray(source.claimedDays)
+    ? [...new Set(source.claimedDays.map(Number).filter(day => day >= 1 && day <= 7))].sort((a, b) => a - b)
+    : [];
+  return {
+    streak,
+    lastClaimDate: /^\d{4}-\d{2}-\d{2}$/.test(String(source.lastClaimDate || '')) ? source.lastClaimDate : null,
+    claimedDays,
+    completed: Boolean(source.completed || streak >= 7)
+  };
+}
+
+function dailyRewardStatus(user, now = Date.now()) {
+  const state = normalizeDailyRewardState(user.dailyReward);
+  const today = utcDateKey(now);
+  const distance = dayDistance(state.lastClaimDate, today);
+  const claimedToday = distance === 0;
+  const missedDay = distance !== null && distance > 1;
+  const nextDay = state.completed ? 7 : (missedDay ? 1 : Math.min(7, state.streak + 1));
+  return {
+    today,
+    streak: missedDay ? 0 : state.streak,
+    nextDay,
+    claimedToday,
+    canClaim: !state.completed && !claimedToday,
+    completed: state.completed,
+    lastClaimDate: state.lastClaimDate,
+    claimedDays: state.claimedDays,
+    rewards: DAILY_REWARDS
+  };
+}
+
 let _stmtInsertGameState = null;
 let _stmtSelectGameState = null;
 
@@ -240,6 +299,7 @@ function loadAccountData() {
           equippedItems: (u.equippedItems && typeof u.equippedItems === 'object') ? { ...u.equippedItems } : {},
           questProgress: (u.questProgress && typeof u.questProgress === 'object') ? { ...u.questProgress } : {},
           claimedQuests: Array.isArray(u.claimedQuests) ? [...new Set(u.claimedQuests)] : [],
+          dailyReward: normalizeDailyRewardState(u.dailyReward),
           settings: (u.settings && typeof u.settings === 'object') ? { ...u.settings } : {},
           createdAt: u.createdAt || Date.now(),
           lastLoginAt: u.lastLoginAt || Date.now()
@@ -318,6 +378,7 @@ function publicUser(user) {
     xpToNextRank: rInfo.xpToNextRank,
     ownedItems: user.ownedItems || [],
     equippedItems: user.equippedItems || {},
+    dailyReward: dailyRewardStatus(user),
     settings: user.settings || {},
     coins: user.coins ?? 1500,
     gold: user.coins ?? 1500,
@@ -573,6 +634,7 @@ async function handleApi(request, response, requestPath) {
       gold: initCoins,
       ownedItems: Array.isArray(body.initialOwnedItems) ? [...new Set(body.initialOwnedItems)] : [],
       equippedItems: (body.initialEquippedItems && typeof body.initialEquippedItems === 'object') ? { ...body.initialEquippedItems } : {},
+      dailyReward: normalizeDailyRewardState(null),
       settings: (body.initialSettings && typeof body.initialSettings === 'object') ? { ...body.initialSettings } : {},
       createdAt: Date.now(),
       lastLoginAt: Date.now()
@@ -638,6 +700,55 @@ async function handleApi(request, response, requestPath) {
     } else {
       sendJson(response, 200, profileResponse(user));
     }
+    return true;
+  }
+  if (requestPath === '/api/daily-rewards' && request.method === 'GET') {
+    if (!user) {
+      sendJson(response, 401, { error: 'Günlük ödüller için giriş yapmalısınız.' });
+    } else {
+      sendJson(response, 200, { dailyReward: dailyRewardStatus(user) });
+    }
+    return true;
+  }
+  if (requestPath === '/api/daily-rewards/claim' && request.method === 'POST') {
+    if (!user) {
+      sendJson(response, 401, { error: 'Günlük ödül almak için giriş yapmalısınız.' });
+      return true;
+    }
+    const status = dailyRewardStatus(user);
+    if (!status.canClaim) {
+      sendJson(response, 409, {
+        error: status.completed ? '7 günlük ödül serisi tamamlandı.' : 'Bugünün ödülü zaten alındı.',
+        dailyReward: status
+      });
+      return true;
+    }
+    const currentState = normalizeDailyRewardState(user.dailyReward);
+    const day = status.nextDay;
+    const reward = DAILY_REWARDS[day - 1];
+    const claimedDays = currentState.claimedDays.filter(claimedDay => claimedDay < day);
+    user.dailyReward = {
+      streak: day,
+      lastClaimDate: status.today,
+      claimedDays: [...claimedDays, day],
+      completed: day === 7
+    };
+    if (reward.kind === 'coins') {
+      user.coins = (user.coins || 0) + reward.amount;
+      user.gold = user.coins;
+    } else if (reward.kind === 'xp') {
+      user.xp = (user.xp || 0) + reward.amount;
+      user.rankId = rankInfo(user.xp).rankId;
+    } else if (reward.kind === 'cosmetic') {
+      user.ownedItems = [...new Set([...(user.ownedItems || []), reward.itemId])];
+    }
+    saveAccountData(true);
+    sendJson(response, 200, {
+      ok: true,
+      reward,
+      dailyReward: dailyRewardStatus(user),
+      user: publicUser(user)
+    });
     return true;
   }
   if (requestPath === '/api/profile/state' && request.method === 'POST') {
@@ -779,6 +890,14 @@ async function handleApi(request, response, requestPath) {
       const cat = String(body.category || '');
       const item = String(body.itemId || '');
       if (cat) {
+        if (cat === 'profileFrame' && !PROFILE_FRAME_IDS.has(item)) {
+          sendJson(response, 400, { error: 'Geçersiz profil çerçevesi.' });
+          return true;
+        }
+        if (cat === 'profileAvatar' && !PROFILE_FREE_SKIN_IDS.has(item) && !(user.ownedItems || []).includes(item)) {
+          sendJson(response, 403, { error: 'Bu deri profil fotoğrafı olarak kullanılamaz.' });
+          return true;
+        }
         user.equippedItems = { ...(user.equippedItems || {}), [cat]: item };
         saveAccountData(true);
       }

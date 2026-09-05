@@ -4212,8 +4212,7 @@ function setupJoy(zoneId, stickId, isMove) {
     } else {
       player.angle = ang;
       const doAtk = dist > 8;
-      // A joystick press is a single attack, even while pointermove updates its aim.
-      _attackPending = doAtk && player.weapon >= 3;
+      _attackPending = doAtk;
       if (doAtk && !activeAttackInput) _attackQueued = true;
       activeAttackInput = doAtk;
     }
@@ -8960,12 +8959,29 @@ function drawPlayerBackpack(ctx, r) {
 // PLAYER SKIN DRAWING SYSTEM — 18 unique canvas-drawn skins
 // ============================================================
 const GENERATED_SKIN_STYLES = {
-  skin_aurora:['#65f5d8','#164c68','#d8fff5'], skin_storm:['#79a9ff','#1a2d72','#e5efff'], skin_magma:['#ff704d','#6d160e','#ffe0a3'], skin_void:['#bd7cff','#241044','#f4d9ff'], skin_solar:['#ffd45a','#9b3e10','#fff5b8'], skin_moon:['#b6c8ff','#293768','#f0f4ff'], skin_emerald:['#64e08a','#18542e','#dcffe5'], skin_sapphire:['#55c7ef','#144f78','#d8f7ff'], skin_ruby:['#ff5c70','#6d1425','#ffe1e5'], skin_amethyst:['#d081ff','#4b1c72','#f6ddff'], skin_cyber:['#5affd1','#123638','#d8fff7'], skin_steam:['#d8a878','#5a3420','#fff0d4'], skin_icefire:['#75eaff','#6c2416','#fff0bf'], skin_thunder:['#fff06a','#3b327d','#ffffdc'], skin_blossom:['#ff9fc7','#6b2851','#ffe7f2'], skin_reef:['#6de0c0','#1a5960','#d9fff6'], skin_desert:['#e6b35f','#70401b','#fff0b0'], skin_frostwolf:['#b7ecff','#254d72','#f0fcff'], skin_shadow:['#a58aff','#1d173c','#e5ddff'], skin_chroma:['#ff83df','#30205e','#ffffff']
+  skin_aurora:['#65f5d8','#164c68','#d8fff5'], skin_storm:['#79a9ff','#1a2d72','#e5efff'], skin_magma:['#ff704d','#6d160e','#ffe0a3'], skin_void:['#bd7cff','#241044','#f4d9ff'], skin_solar:['#ffd45a','#9b3e10','#fff5b8'], skin_moon:['#b6c8ff','#293768','#f0f4ff'], skin_emerald:['#64e08a','#18542e','#dcffe5'], skin_sapphire:['#55c7ef','#144f78','#d8f7ff'], skin_ruby:['#ff5c70','#6d1425','#ffe1e5'], skin_amethyst:['#d081ff','#4b1c72','#f6ddff'], skin_cyber:['#5affd1','#123638','#d8fff7'], skin_steam:['#d8a878','#5a3420','#fff0d4'], skin_icefire:['#75eaff','#6c2416','#fff0bf'], skin_thunder:['#fff06a','#3b327d','#ffffdc'], skin_blossom:['#ff9fc7','#6b2851','#ffe7f2'], skin_reef:['#6de0c0','#1a5960','#d9fff6'], skin_desert:['#e6b35f','#70401b','#fff0b0'], skin_frostwolf:['#b7ecff','#254d72','#f0fcff'], skin_shadow:['#a58aff','#1d173c','#e5ddff'], skin_chroma:['#ff83df','#30205e','#ffffff'], skin_thor_stormforged:['#7bd8ff','#152b4a','#fff4b0']
 };
 function drawGeneratedSkinBody(c, R, sk, t, fl) {
   const style = GENERATED_SKIN_STYLES[sk];
   if (!style) return false;
   const [primary, dark, shine] = style;
+  if (sk === 'skin_thor_stormforged' && !fl) {
+    const pulse = .78 + Math.sin(t * .08) * .12;
+    c.save(); c.shadowColor = shine; c.shadowBlur = 16 * pulse;
+    const metal = c.createLinearGradient(-R, -R, R, R);
+    metal.addColorStop(0, '#f2fbff'); metal.addColorStop(.24, primary); metal.addColorStop(.58, '#397ca8'); metal.addColorStop(1, dark);
+    c.fillStyle = metal; c.strokeStyle = '#d9f6ff'; c.lineWidth = 3;
+    c.beginPath(); c.arc(0, 0, R, 0, Math.PI*2); c.fill(); c.stroke(); c.shadowBlur = 0;
+    c.fillStyle = '#0c172b'; c.beginPath(); c.arc(-R*.2, -R*.68, R*.54, Math.PI, Math.PI*2); c.fill();
+    c.fillStyle = '#d8f4ff'; c.strokeStyle = '#294c67'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(-R*.72,-R*.52); c.lineTo(-R*.5,-R*1.02); c.lineTo(-R*.13,-R*.72); c.lineTo(R*.18,-R*1.02); c.lineTo(R*.7,-R*.5); c.lineTo(R*.54,-R*.18); c.lineTo(-R*.6,-R*.18); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#172b46'; c.beginPath(); c.ellipse(R*.28,-R*.18,R*.18,R*.12,0,0,Math.PI*2); c.ellipse(R*.28,R*.18,R*.18,R*.12,0,0,Math.PI*2); c.fill();
+    c.fillStyle = shine; c.beginPath(); c.arc(R*.31,-R*.18,R*.07,0,Math.PI*2); c.arc(R*.31,R*.18,R*.07,0,Math.PI*2); c.fill();
+    c.fillStyle = '#d7eaf4'; c.strokeStyle = '#52758d'; c.lineWidth = 2; c.beginPath(); c.moveTo(R*.42,-R*.05); c.lineTo(R*.83,0); c.lineTo(R*.42,R*.05); c.closePath(); c.fill(); c.stroke();
+    c.strokeStyle = shine; c.lineWidth = 2.5; c.beginPath(); c.moveTo(-R*.45,R*.32); c.lineTo(-R*.18,R*.1); c.lineTo(-R*.02,R*.38); c.lineTo(R*.25,R*.16); c.stroke();
+    for (let i = 0; i < 6; i++) { const a = t*.025 + i*Math.PI/3; c.fillStyle = shine; c.globalAlpha = .45 + Math.sin(t*.1+i)*.2; c.beginPath(); c.arc(Math.cos(a)*R*1.12, Math.sin(a)*R*1.12, R*.045, 0, Math.PI*2); c.fill(); }
+    c.globalAlpha = 1; c.restore(); return true;
+  }
   const pulse = .75 + Math.sin(t * .08) * .12;
   c.save(); c.shadowColor = fl ? '#fff' : primary; c.shadowBlur = 12 * pulse;
   const body = c.createRadialGradient(-R*.25, -R*.3, 2, 0, 0, R*1.2);

@@ -316,6 +316,9 @@
             margin: auto;
         }
 
+        #profile-avatar-grid > *, #profile-frame-grid > *, #daily-reward-grid > * { min-width: 0; }
+        #profile-avatar-grid canvas { width: 100%; max-width: 58px; height: auto; aspect-ratio: 1; }
+
         .modal-content.hidden { display: none !important; }
         .modal-content.flex { display: flex !important; }
 
@@ -669,6 +672,10 @@
             #serverModal .grid.grid-cols-6 > div:nth-child(6) { grid-column:span 2 / span 2; }
             #cosmeticsModal .panel-inset,
             #shopModal .panel-inset { max-width:100%; }
+            #profile-avatar-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+            #profile-avatar-grid canvas { max-width:52px; }
+            #daily-reward-grid { gap:2px; }
+            #daily-reward-grid > * { padding-left:1px; padding-right:1px; }
         }
 
         #settingsModal {
@@ -863,6 +870,20 @@
             <i class="fa-solid fa-khanda absolute left-6 text-5xl text-white/20 transform -rotate-45 pointer-events-none"></i>
             <i class="fa-solid fa-shield-halved absolute right-6 text-5xl text-white/20 transform rotate-12 pointer-events-none"></i>
         </button>
+
+        <section class="w-full mt-3 p-3 rounded-xl border-[3px] border-[#6f3c18] bg-[linear-gradient(135deg,rgba(25,18,10,.96),rgba(51,29,12,.94))] shadow-[0_8px_24px_rgba(0,0,0,.35)]" aria-labelledby="daily-reward-title">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="w-8 h-8 rounded-lg bg-[#1e4660] border-2 border-[#7bd8ff] flex items-center justify-center text-lg shadow-[0_0_12px_rgba(123,216,255,.35)]">⚡</span>
+                    <div class="min-w-0 text-left">
+                        <h2 id="daily-reward-title" class="font-io text-white text-sm sm:text-base truncate">7 GÜNLÜK FIRTINA ÖDÜLÜ</h2>
+                        <p id="daily-reward-status" class="text-[9px] text-[#b9d9e8] font-black uppercase tracking-wide truncate">Sunucu ödülleri yükleniyor...</p>
+                    </div>
+                </div>
+                <button id="daily-reward-claim" onclick="claimDailyReward()" class="btn-3d btn-yellow px-2.5 py-1.5 font-io text-[10px] sm:text-xs whitespace-nowrap" type="button">YÜKLENİYOR</button>
+            </div>
+            <div id="daily-reward-grid" class="grid grid-cols-7 gap-1"></div>
+        </section>
     </div>
 
     <!-- Alt Grid (Cosmetics/Envanter, Shop/Mağaza) -->
@@ -976,8 +997,9 @@
             
             <div class="panel-inset p-4 sm:p-5 mt-1 flex flex-col gap-3">
                 <div class="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/15">
-                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-700 border-2 border-black flex items-center justify-center shadow-inner overflow-hidden">
-                        <img id="prof-avatar-img" src="players/wolf.png" class="w-12 h-12 object-contain" alt="Avatar">
+                    <div id="prof-avatar-frame" class="relative w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-700 border-2 border-black flex items-center justify-center shadow-inner overflow-hidden">
+                        <canvas id="prof-avatar-canvas" width="96" height="96" class="w-12 h-12 relative z-[1]" aria-label="Profil fotoğrafı"></canvas>
+                        <span id="prof-avatar-motif" class="absolute inset-0 z-[2] flex items-start justify-center pt-0.5 text-[10px] font-black pointer-events-none">✦</span>
                     </div>
                     <div class="flex flex-col flex-1 min-w-0">
                         <span id="prof-username" class="font-io text-lg text-white stroke-text leading-tight">Gölge_Avcısı</span>
@@ -1002,6 +1024,23 @@
                             <span id="prof-next-rank-xp">350 XP kaldı</span>
                         </div>
                     </div>
+                </div>
+
+                <div class="bg-black/30 p-3 rounded-xl border border-white/10">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-io text-xs text-[#7bd8ff]">PROFİL ÇERÇEVESİ</span>
+                        <span id="profile-frame-name" class="text-[9px] font-black text-white/60">Orman Oyma</span>
+                    </div>
+                    <div id="profile-frame-grid" class="grid grid-cols-4 gap-1.5"></div>
+                </div>
+
+                <div class="bg-black/30 p-3 rounded-xl border border-white/10">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-io text-xs text-[#f7c02d]">PROFİL FOTOĞRAFI</span>
+                        <span id="profile-avatar-name" class="text-[9px] font-black text-white/60">Kurt</span>
+                    </div>
+                    <div id="profile-avatar-grid" class="grid grid-cols-6 gap-1.5 max-h-36 overflow-y-auto pr-0.5"></div>
+                    <p id="profile-avatar-empty" class="hidden text-center text-[10px] font-black text-white/50 py-3">Sahip olduğun deri bulunmuyor.</p>
                 </div>
 
                 <!-- Canlı XP & Seviye İlerleme Kartı -->
@@ -1522,7 +1561,8 @@
                 ['skin_desert', 'Çöl Yağmacısı', 'common', '#e6b35f', '#70401b', '#fff0b0'],
                 ['skin_frostwolf', 'Buzkurdu', 'epic', '#b7ecff', '#254d72', '#f0fcff'],
                 ['skin_shadow', 'Gölge Pençesi', 'epic', '#a58aff', '#1d173c', '#e5ddff'],
-                ['skin_chroma', 'Kroma Şampiyonu', 'legendary', '#ff83df', '#30205e', '#ffffff']
+                ['skin_chroma', 'Kroma Şampiyonu', 'legendary', '#ff83df', '#30205e', '#ffffff'],
+                ['skin_thor_stormforged', 'Thor: Fırtına Zırhı', 'legendary', '#7bd8ff', '#152b4a', '#fff4b0']
             ].map(([id, name, rarity, primary, dark, shine]) => ({ id, name, img: '', rarity, free: false, cost: 1, generated: true, primary, dark, shine }))
         ].map(item => item.free || item.cost === 0 ? item : { ...item, cost: normalizeShopPrice(item.cost) });
 
@@ -1595,6 +1635,17 @@
             epic: { label: 'EPIC', border: '#b15bea', glow: 'rgba(177,91,234,.5)' },
             legendary: { label: 'LEGENDARY', border: '#f7c02d', glow: 'rgba(247,192,45,.58)' }
         });
+
+        const PROFILE_FRAMES = [
+            { id: 'frame_woodland', name: 'Orman Oyma', rarity: 'common', border: '#9b5d29', accent: '#f6c56c', background: '#261309', motif: '✦' },
+            { id: 'frame_iron', name: 'Demir Nöbetçi', rarity: 'uncommon', border: '#91a4b2', accent: '#e8f6ff', background: '#18232b', motif: '◆' },
+            { id: 'frame_emerald', name: 'Zümrüt Diken', rarity: 'rare', border: '#35d58c', accent: '#c5ffe7', background: '#082b20', motif: '❖' },
+            { id: 'frame_frost', name: 'Buz Kristali', rarity: 'rare', border: '#65dcff', accent: '#e3fbff', background: '#082c45', motif: '✧' },
+            { id: 'frame_royal', name: 'Kraliyet Altını', rarity: 'epic', border: '#f7c02d', accent: '#fff1a8', background: '#3c1b09', motif: '♛' },
+            { id: 'frame_arcane', name: 'Arcane Halka', rarity: 'epic', border: '#ca7bff', accent: '#f4ddff', background: '#241039', motif: '⟡' },
+            { id: 'frame_storm', name: 'Fırtına Mührü', rarity: 'legendary', border: '#7bd8ff', accent: '#fff4b0', background: '#102d4a', motif: 'ϟ' },
+            { id: 'frame_obsidian', name: 'Obsidyen Taç', rarity: 'legendary', border: '#ff7b5c', accent: '#ffd6c9', background: '#210d16', motif: '♢' }
+        ];
 
         function decorateRarityCard(card, item) {
             const rarity = RARITY_META[item?.rarity] ? item.rarity : 'common';
@@ -1741,6 +1792,112 @@
             if (!item) return false;
             if (item.free || item.cost === 0) return true;
             return getOwnedItems().includes(item.id);
+        }
+
+        function getProfileEquipped() {
+            return getEquippedItems();
+        }
+
+        function getProfileAvatarSkin() {
+            const equipped = getProfileEquipped();
+            const equippedSkin = REAL_SKINS.find(item => item.id === equipped.profileAvatar && isItemOwned(item));
+            if (equippedSkin) return equippedSkin;
+            const currentSkin = REAL_SKINS.find(item => item.id === _currentSkin && isItemOwned(item));
+            return currentSkin || REAL_SKINS.find(item => item.free) || REAL_SKINS[0];
+        }
+
+        function getProfileFrame() {
+            const equipped = getProfileEquipped();
+            return PROFILE_FRAMES.find(frame => frame.id === equipped.profileFrame) || PROFILE_FRAMES[0];
+        }
+
+        function applyProfileFrame(frame = getProfileFrame()) {
+            const frameEl = document.getElementById('prof-avatar-frame');
+            const nameEl = document.getElementById('profile-frame-name');
+            if (!frameEl || !frame) return;
+            frameEl.style.background = `linear-gradient(145deg, ${frame.accent}, ${frame.background} 42%, ${frame.border})`;
+            frameEl.style.border = `3px solid ${frame.border}`;
+            frameEl.style.boxShadow = `0 0 0 2px #120904, 0 0 16px ${frame.border}99, inset 0 0 0 2px ${frame.accent}66`;
+            frameEl.dataset.motif = frame.motif;
+            const motifEl = document.getElementById('prof-avatar-motif');
+            if (motifEl) { motifEl.textContent = frame.motif; motifEl.style.color = frame.accent; }
+            if (nameEl) nameEl.textContent = frame.name;
+        }
+
+        function renderProfileAvatarPreview() {
+            const skin = getProfileAvatarSkin();
+            const canvas = document.getElementById('prof-avatar-canvas');
+            const nameEl = document.getElementById('profile-avatar-name');
+            if (canvas && skin) {
+                const context = canvas.getContext('2d');
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                drawExactInGamePlayer(context, 48, 63, skin.id, _equippedWeapon, _animFrame, .52);
+            }
+            if (nameEl && skin) nameEl.textContent = skin.name;
+            applyProfileFrame();
+        }
+
+        function renderProfileCosmetics() {
+            const frameGrid = document.getElementById('profile-frame-grid');
+            const avatarGrid = document.getElementById('profile-avatar-grid');
+            const emptyEl = document.getElementById('profile-avatar-empty');
+            if (!frameGrid || !avatarGrid) return;
+            const equipped = getProfileEquipped();
+            const activeFrame = equipped.profileFrame || PROFILE_FRAMES[0].id;
+            const ownedSkins = REAL_SKINS.filter(isItemOwned);
+            frameGrid.innerHTML = PROFILE_FRAMES.map(frame => {
+                const active = frame.id === activeFrame;
+                return `<button type="button" title="${frame.name}" onclick="equipProfileCosmetic('profileFrame','${frame.id}')" class="h-11 rounded-lg border-2 flex flex-col items-center justify-center transition-transform hover:scale-105 ${active ? 'ring-2 ring-white' : ''}" style="background:${frame.background};border-color:${frame.border};box-shadow:inset 0 0 0 2px ${frame.accent}55,0 0 8px ${frame.border}66"><span class="text-base leading-4" style="color:${frame.accent}">${frame.motif}</span><span class="text-[7px] font-black truncate w-full px-1" style="color:${frame.accent}">${frame.name}</span></button>`;
+            }).join('');
+            avatarGrid.innerHTML = '';
+            if (emptyEl) emptyEl.classList.toggle('hidden', ownedSkins.length > 0);
+            const activeAvatar = getProfileAvatarSkin().id;
+            ownedSkins.forEach(skin => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.title = skin.name;
+                button.className = `h-14 rounded-lg border-2 flex items-center justify-center overflow-hidden transition-transform hover:scale-105 ${skin.id === activeAvatar ? 'border-[#79d138] ring-2 ring-[#79d138]' : 'border-white/15 bg-black/30'}`;
+                if (skin.generated) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 76; canvas.height = 76;
+                    drawExactInGamePlayer(canvas.getContext('2d'), 38, 49, skin.id, _equippedWeapon, _animFrame, .42);
+                    button.appendChild(canvas);
+                } else {
+                    const image = document.createElement('img');
+                    image.src = skin.img; image.alt = skin.name; image.className = 'w-11 h-11 object-contain';
+                    button.appendChild(image);
+                }
+                button.onclick = () => equipProfileCosmetic('profileAvatar', skin.id);
+                avatarGrid.appendChild(button);
+            });
+            renderProfileAvatarPreview();
+        }
+
+        async function equipProfileCosmetic(category, itemId) {
+            if (!_authToken) { openModal('loginModal'); return; }
+            const previous = getProfileEquipped();
+            const next = { ...previous, [category]: itemId };
+            localStorage.setItem('fb_acc_equipped', JSON.stringify(next));
+            renderProfileCosmetics();
+            try {
+                const response = await fetch('/api/shop/equip', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _authToken },
+                    body: JSON.stringify({ category, itemId })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Profil kozmetiği kaydedilemedi.');
+                const equipped = normalizeEquippedItems(data.equippedItems);
+                localStorage.setItem('fb_acc_equipped', JSON.stringify(equipped));
+                _authUser = { ...(_authUser || {}), equippedItems: equipped };
+                localStorage.setItem('fb_auth_user', JSON.stringify(_authUser));
+                renderProfileCosmetics();
+                triggerToast(category === 'profileFrame' ? 'Profil çerçevesi kaydedildi.' : 'Profil fotoğrafı kaydedildi.', 'fa-circle-check');
+            } catch (error) {
+                localStorage.setItem('fb_acc_equipped', JSON.stringify(previous));
+                renderProfileCosmetics();
+                triggerToast(error.message || 'Profil kozmetiği kaydedilemedi.', 'fa-circle-exclamation');
+            }
         }
 
         function updateGoldDisplays() {
@@ -2043,6 +2200,105 @@
             }
             updateGoldDisplays();
             persistPlayerProfileState();
+            loadDailyRewards();
+        }
+
+        let _dailyRewardState = null;
+        let _dailyRewardClaiming = false;
+
+        function renderDailyRewards(status = null) {
+            const grid = document.getElementById('daily-reward-grid');
+            const statusEl = document.getElementById('daily-reward-status');
+            const claimBtn = document.getElementById('daily-reward-claim');
+            if (!grid || !statusEl || !claimBtn) return;
+            _dailyRewardState = status;
+            const rewards = status?.rewards || [
+                { day: 1, icon: '🪙', label: '+100 Altın' }, { day: 2, icon: '🪙', label: '+150 Altın' },
+                { day: 3, icon: '🪙', label: '+250 Altın' }, { day: 4, icon: '✨', label: '+250 XP' },
+                { day: 5, icon: '🪙', label: '+400 Altın' }, { day: 6, icon: '🪙', label: '+600 Altın' },
+                { day: 7, icon: '⚡', label: 'Thor Zırhı' }
+            ];
+            const claimedDays = new Set(status?.claimedDays || []);
+            grid.innerHTML = rewards.map(reward => {
+                const claimed = claimedDays.has(reward.day);
+                const active = Boolean(status?.canClaim && reward.day === status.nextDay);
+                const cardClass = claimed
+                    ? 'bg-[#244c2b] border-[#79d138] text-[#d9ffd0]'
+                    : active
+                        ? 'bg-[#214d68] border-[#7bd8ff] text-white shadow-[0_0_10px_rgba(123,216,255,.5)]'
+                        : 'bg-black/30 border-white/10 text-white/45';
+                return `<div class="min-w-0 rounded-md border-2 ${cardClass} p-1 text-center" title="${reward.label}"><div class="text-[9px] font-black">GÜN ${reward.day}</div><div class="text-base leading-5">${claimed ? '✓' : reward.icon}</div><div class="text-[8px] font-black truncate">${claimed ? 'ALINDI' : reward.day === 7 ? 'SKIN' : reward.label.replace('+', '')}</div></div>`;
+            }).join('');
+
+            if (!_authToken) {
+                statusEl.textContent = 'Hesabına giriş yap ve seriyi başlat';
+                claimBtn.textContent = 'GİRİŞ YAP';
+                claimBtn.disabled = false;
+                claimBtn.onclick = () => openModal('loginModal');
+                return;
+            }
+            if (!status) {
+                statusEl.textContent = 'Ödül durumu yüklenemedi';
+                claimBtn.textContent = 'YENİLE';
+                claimBtn.disabled = false;
+                claimBtn.onclick = loadDailyRewards;
+                return;
+            }
+            statusEl.textContent = status.completed
+                ? '7 günlük seri tamamlandı • Thor zırhı profilinde'
+                : status.claimedToday
+                    ? `Gün ${status.streak} alındı • Yarın tekrar gel`
+                    : `Gün ${status.nextDay} hazır • Kaçırırsan seri 1. güne döner`;
+            claimBtn.disabled = _dailyRewardClaiming || !status.canClaim;
+            claimBtn.textContent = status.completed ? 'TAMAMLANDI' : status.claimedToday ? 'YARIN GEL' : _dailyRewardClaiming ? 'ALINIYOR...' : `GÜN ${status.nextDay} ÖDÜLÜ`;
+            claimBtn.onclick = claimDailyReward;
+        }
+
+        async function loadDailyRewards() {
+            if (!_authToken) { renderDailyRewards(null); return; }
+            try {
+                const response = await fetch('/api/daily-rewards', { headers: { 'Authorization': 'Bearer ' + _authToken } });
+                const data = await response.json();
+                if (response.ok) renderDailyRewards(data.dailyReward);
+                else renderDailyRewards(null);
+            } catch {
+                renderDailyRewards(null);
+            }
+        }
+
+        async function claimDailyReward() {
+            if (!_authToken) { openModal('loginModal'); return; }
+            if (_dailyRewardClaiming || (_dailyRewardState && !_dailyRewardState.canClaim)) return;
+            _dailyRewardClaiming = true;
+            renderDailyRewards(_dailyRewardState);
+            try {
+                const response = await fetch('/api/daily-rewards/claim', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _authToken },
+                    body: '{}'
+                });
+                const data = await response.json();
+                if (data.dailyReward) renderDailyRewards(data.dailyReward);
+                if (response.ok && data.user) {
+                    _authUser = data.user;
+                    _currentUser = data.user;
+                    localStorage.setItem('fb_auth_user', JSON.stringify(data.user));
+                    localStorage.setItem('fb_acc_owned', JSON.stringify(data.user.ownedItems || []));
+                    localStorage.setItem('fb_gold', String(data.user.coins ?? 0));
+                    hydratePlayerProfileState(data.user);
+                    updateGoldDisplays();
+                    triggerToast(`${data.reward.label} hesabına eklendi!`, 'fa-gift');
+                    playSfx('buy');
+                } else if (!response.ok) {
+                    triggerToast(data.error || 'Günlük ödül alınamadı.', 'fa-circle-exclamation');
+                }
+            } catch {
+                triggerToast('Ödül sunucusuna bağlanılamadı.', 'fa-circle-exclamation');
+            } finally {
+                _dailyRewardClaiming = false;
+                if (_dailyRewardState) renderDailyRewards(_dailyRewardState);
+                else loadDailyRewards();
+            }
         }
 
         async function handleLogin() {
@@ -2578,8 +2834,7 @@
             if (gv) gv.textContent = profileGold.toLocaleString();
             updateHeaderProfile(u);
 
-            const pImg = document.getElementById('prof-avatar-img');
-            if (pImg) pImg.src = `players/${_currentSkin}.png`;
+            renderProfileCosmetics();
 
             const hr = document.getElementById('header-rank');
             if (hr) hr.textContent = `${RANK_ICONS[rankId] || '🌱'} ${currentRankName}`;
@@ -3982,6 +4237,21 @@
             const radius = 36 * scale;
             const pulse = .72 + Math.sin(t * .08) * .12;
             ctx.save(); ctx.translate(cx, cy);
+            if (skinId === 'skin_thor_stormforged') {
+                ctx.shadowColor = style.shine; ctx.shadowBlur = 16 * scale * pulse;
+                const metal = ctx.createLinearGradient(-radius, -radius, radius, radius);
+                metal.addColorStop(0, '#f2fbff'); metal.addColorStop(.24, style.primary); metal.addColorStop(.58, '#397ca8'); metal.addColorStop(1, style.dark);
+                ctx.fillStyle = metal; ctx.strokeStyle = '#d9f6ff'; ctx.lineWidth = 3 * scale;
+                ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+                ctx.fillStyle = '#0c172b'; ctx.beginPath(); ctx.arc(-radius*.2, -radius*.68, radius*.54, Math.PI, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#d8f4ff'; ctx.strokeStyle = '#294c67'; ctx.lineWidth = 2 * scale;
+                ctx.beginPath(); ctx.moveTo(-radius*.72,-radius*.52); ctx.lineTo(-radius*.5,-radius*1.02); ctx.lineTo(-radius*.13,-radius*.72); ctx.lineTo(radius*.18,-radius*1.02); ctx.lineTo(radius*.7,-radius*.5); ctx.lineTo(radius*.54,-radius*.18); ctx.lineTo(-radius*.6,-radius*.18); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#172b46'; ctx.beginPath(); ctx.ellipse(radius*.28,-radius*.18,radius*.18,radius*.12,0,0,Math.PI*2); ctx.ellipse(radius*.28,radius*.18,radius*.18,radius*.12,0,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle = style.shine; ctx.beginPath(); ctx.arc(radius*.31,-radius*.18,radius*.07,0,Math.PI*2); ctx.arc(radius*.31,radius*.18,radius*.07,0,Math.PI*2); ctx.fill();
+                ctx.strokeStyle = style.shine; ctx.lineWidth = 2 * scale; ctx.beginPath(); ctx.moveTo(-radius*.45,radius*.32); ctx.lineTo(-radius*.18,radius*.1); ctx.lineTo(-radius*.02,radius*.38); ctx.lineTo(radius*.25,radius*.16); ctx.stroke();
+                for (let index = 0; index < 6; index++) { const angle = t*.025 + index*Math.PI/3; ctx.fillStyle = style.shine; ctx.globalAlpha = .45 + Math.sin(t*.1+index)*.2; ctx.beginPath(); ctx.arc(Math.cos(angle)*radius*1.12, Math.sin(angle)*radius*1.12, radius*.045, 0, Math.PI*2); ctx.fill(); }
+                ctx.globalAlpha = 1; ctx.restore(); return true;
+            }
             ctx.shadowColor = style.primary; ctx.shadowBlur = 14 * scale * pulse;
             const gradient = ctx.createRadialGradient(-radius * .25, -radius * .3, 2, 0, 0, radius * 1.2);
             gradient.addColorStop(0, style.shine); gradient.addColorStop(.34, style.primary); gradient.addColorStop(1, style.dark);
