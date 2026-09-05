@@ -1163,23 +1163,23 @@
         </div>
 
         <!-- 5. SEVİYE ÖDÜLLERİ MODALI -->
-        <div id="levelRewardsModal" class="panel-wood w-full max-w-[760px] hidden flex-col relative modal-content" onclick="event.stopPropagation()">
+        <div id="levelRewardsModal" class="panel-wood w-full max-w-[540px] hidden flex-col relative modal-content" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
                 <div class="modal-badge-title"><i class="fa-solid fa-road text-sm"></i> LEVEL ROAD</div>
                 <button onclick="closeAllModals()" class="modal-close-btn" title="Kapat">✕</button>
             </div>
-            <div class="panel-inset p-3 sm:p-5 mt-1 flex flex-col gap-3">
+            <div class="panel-inset p-2.5 sm:p-4 mt-1 flex flex-col gap-2.5">
                 <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
                     <div>
-                        <div id="level-road-title" class="font-io text-xl sm:text-2xl text-white stroke-text">SEVİYE YOLU</div>
+                        <div id="level-road-title" class="font-io text-lg sm:text-xl text-white stroke-text">SEVİYE YOLU</div>
                         <div id="level-road-subtitle" class="text-[10px] sm:text-xs font-black text-[#b9d9e8]">Ödüller yükleniyor...</div>
                     </div>
                     <div id="level-road-counter" class="font-io text-sm text-[#f7c02d]">LV.1 / 50</div>
                 </div>
-                <div class="h-4 rounded-full bg-black/70 border-2 border-[#1f1108] overflow-hidden shadow-inner">
+                <div class="h-3 rounded-full bg-black/70 border-2 border-[#1f1108] overflow-hidden shadow-inner">
                     <div id="level-road-progress" class="h-full bg-gradient-to-r from-[#36c7ff] via-[#7bd8ff] to-[#f7c02d] transition-all duration-500" style="width:0%"></div>
                 </div>
-                <div id="level-rewards-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 max-h-[58vh] overflow-y-auto pr-1"></div>
+                <div id="level-rewards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 max-h-[62dvh] overflow-y-auto pr-1"></div>
             </div>
         </div>
 
@@ -2288,6 +2288,38 @@
             loadLevelRewards();
         }
 
+        function renderLevelRewardVisual(element, reward) {
+            if (!element || !reward) return;
+            if (reward.kind === 'coins') {
+                element.innerHTML = `<img src="asset/gold.png" class="w-8 h-8 object-contain" alt="Gerçek altın">`;
+                return;
+            }
+            const skin = REAL_SKINS.find(item => item.id === reward.itemId);
+            const sword = REAL_SWORDS.find(item => item.id === reward.itemId);
+            const axe = REAL_AXES.find(item => item.id === reward.itemId);
+            if (skin) {
+                const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+                drawExactInGamePlayer(canvas.getContext('2d'), 32, 42, skin.id, _equippedWeapon, _animFrame, .34);
+                element.appendChild(canvas);
+                return;
+            }
+            const weapon = sword || axe;
+            if (weapon) {
+                const image = document.createElement('img'); image.src = weapon.img; image.alt = weapon.name; image.className = 'w-9 h-9 object-contain';
+                element.appendChild(image);
+                return;
+            }
+            const effect = PROFILE_EFFECTS.find(item => item.id === reward.itemId);
+            const frame = PROFILE_FRAMES.find(item => item.id === reward.itemId);
+            if (effect) {
+                element.innerHTML = `<span class="text-2xl" style="color:${effect.colors[0]};text-shadow:0 0 10px ${effect.colors[1]}">${effect.icon}</span>`;
+            } else if (frame) {
+                element.innerHTML = `<span class="text-2xl" style="color:${frame.accent};text-shadow:0 0 10px ${frame.border}">${frame.motif}</span>`;
+            } else {
+                element.textContent = reward.icon || '✦';
+            }
+        }
+
         function renderLevelRewards(status = null) {
             const grid = document.getElementById('level-rewards-grid');
             const counter = document.getElementById('level-road-counter');
@@ -2313,8 +2345,12 @@
                 const tone = isClaimed ? 'border-[#79d138] bg-[#153d22] text-[#dcffd3]' : unlocked ? 'border-[#7bd8ff] bg-[#123653] text-white' : 'border-white/10 bg-black/30 text-white/45';
                 const badge = isClaimed ? 'ALINDI' : unlocked ? 'AÇIK' : 'KİLİTLİ';
                 const action = isClaimed ? '<span class="text-[#79d138] text-[10px] font-black">✓</span>' : `<button type="button" ${unlocked && !_levelRewardClaiming ? '' : 'disabled'} onclick="claimLevelReward(${reward.level})" class="rounded-md border border-white/20 px-2 py-1 text-[8px] font-black ${unlocked ? 'bg-[#f7c02d] text-[#251304]' : 'bg-black/30 text-white/35'}">${unlocked ? 'AL' : 'XP '+reward.xp}</button>`;
-                return `<article class="relative min-w-0 rounded-xl border-2 ${tone} p-2 flex flex-col gap-1.5 ${isCurrent ? 'ring-2 ring-[#f7c02d] shadow-[0_0_14px_rgba(247,192,45,.35)]' : ''}"><div class="flex items-center justify-between gap-1"><span class="font-io text-xs">LV.${reward.level}</span><span class="text-[7px] font-black tracking-wide">${badge}</span></div><div class="text-2xl text-center leading-8">${reward.icon}</div><div class="text-[9px] font-black text-center leading-tight min-h-[22px]">${reward.label}</div><div class="flex items-center justify-between gap-1 mt-auto"><span class="text-[8px] opacity-60">${reward.xp.toLocaleString()} XP</span>${action}</div></article>`;
+                return `<article class="relative min-w-0 rounded-lg border-2 ${tone} p-1.5 flex items-center gap-2 ${isCurrent ? 'ring-2 ring-[#f7c02d] shadow-[0_0_14px_rgba(247,192,45,.35)]' : ''}"><div data-level-reward-visual="${reward.level}" class="w-10 h-10 shrink-0 rounded-md bg-black/25 flex items-center justify-center overflow-hidden">${reward.kind === 'coins' ? '<img src="asset/gold.png" class="w-8 h-8 object-contain" alt="Gerçek altın">' : `<span class="text-xl">${reward.icon}</span>`}</div><div class="min-w-0 flex-1"><div class="flex items-center justify-between gap-1"><span class="font-io text-[10px]">LV.${reward.level}</span><span class="text-[7px] font-black tracking-wide">${badge}</span></div><div class="text-[9px] font-black truncate">${reward.label}</div><div class="text-[7px] opacity-60">${reward.xp.toLocaleString()} XP</div></div>${action}</article>`;
             }).join('');
+            grid.querySelectorAll('[data-level-reward-visual]').forEach(element => {
+                const reward = status.rewards.find(item => String(item.level) === element.dataset.levelRewardVisual);
+                if (reward && reward.kind !== 'coins') renderLevelRewardVisual(element, reward);
+            });
         }
 
         async function loadLevelRewards() {

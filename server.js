@@ -869,8 +869,6 @@ async function handleApi(request, response, requestPath) {
         }
       }
     }
-    if (Array.isArray(body.ownedItems)) user.ownedItems = [...new Set([...(user.ownedItems || []), ...body.ownedItems.map(String)])];
-    if (body.equippedItems && typeof body.equippedItems === 'object') user.equippedItems = { ...(user.equippedItems || {}), ...body.equippedItems };
     if (body.questProgress && typeof body.questProgress === 'object') {
       user.questProgress = user.questProgress || {};
       for (const quest of QUESTS_LIST) {
@@ -974,12 +972,6 @@ async function handleApi(request, response, requestPath) {
   if (requestPath === '/api/shop/sync' && request.method === 'POST') {
     if (!user) sendJson(response, 401, { error: 'Oturum gereklidir.' });
     else {
-      if (Array.isArray(body.ownedItems)) {
-        user.ownedItems = [...new Set([...(user.ownedItems || []), ...body.ownedItems])];
-      }
-      if (body.equippedItems && typeof body.equippedItems === 'object') {
-        user.equippedItems = { ...user.equippedItems, ...body.equippedItems };
-      }
       if (typeof body.coins === 'number' && body.coins >= 0) {
         user.coins = Math.max(user.coins || 0, body.coins);
         user.gold = user.coins;
