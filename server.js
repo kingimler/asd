@@ -147,6 +147,59 @@ function rankInfo(xp) {
   };
 }
 
+const LEVEL_XP_THRESHOLDS = [0];
+for (let level = 2; level <= 50; level++) {
+  LEVEL_XP_THRESHOLDS.push(Math.round(220 * Math.pow(level - 1, 1.78)));
+}
+
+const LEVEL_REWARDS = Array.from({ length: 50 }, (_, index) => {
+  const level = index + 1;
+  const specialRewards = {
+    5: { kind: 'item', itemId: 'skin_emerald', label: 'Zümrüt Avcısı', icon: '🟢' },
+    10: { kind: 'item', itemId: 'skin_sapphire', label: 'Safir Savaşçı', icon: '🔷' },
+    15: { kind: 'item', itemId: 'skin_storm', label: 'Fırtına Ruhu', icon: '🌪️' },
+    20: { kind: 'item', itemId: 'skin_shadow', label: 'Gölge Pençesi', icon: '🌑' },
+    25: { kind: 'item', itemId: 'skin_thunder', label: 'Gök Gürültüsü', icon: '⚡' },
+    30: { kind: 'item', itemId: 'skin_chroma', label: 'Kroma Şampiyonu', icon: '🌈' },
+    35: { kind: 'item', itemId: 'skin_thor_stormforged', label: 'Thor: Fırtına Zırhı', icon: '🔨' },
+    40: { kind: 'item', itemId: 'ba_tier_3', label: 'Altın Balta', icon: '🪓' },
+    45: { kind: 'item', itemId: 'ki_tier_4', label: 'Obsidyen Kılıç', icon: '🗡️' },
+    50: { kind: 'profileFrame', itemId: 'frame_storm', label: 'Fırtına Mührü Çerçevesi', icon: 'ϟ' }
+  };
+  return { level, xp: LEVEL_XP_THRESHOLDS[index], ...(specialRewards[level] || { kind: 'coins', amount: 75 + level * 35, label: `+${75 + level * 35} Altın`, icon: '🪙' }) };
+});
+
+function progressionLevel(xp) {
+  let level = 1;
+  for (let index = 0; index < LEVEL_XP_THRESHOLDS.length; index++) {
+    if (xp >= LEVEL_XP_THRESHOLDS[index]) level = index + 1;
+    else break;
+  }
+  return level;
+}
+
+function levelProgressInfo(xp) {
+  const level = progressionLevel(xp);
+  const currentXp = LEVEL_XP_THRESHOLDS[level - 1] || 0;
+  const nextXp = LEVEL_XP_THRESHOLDS[level] ?? currentXp;
+  const maxLevel = level >= LEVEL_XP_THRESHOLDS.length;
+  return {
+    level,
+    currentXp,
+    nextXp,
+    progress: maxLevel ? 1 : Math.max(0, Math.min(1, (xp - currentXp) / Math.max(1, nextXp - currentXp))),
+    xpToNext: maxLevel ? 0 : Math.max(0, nextXp - xp),
+    maxLevel
+  };
+}
+
+function levelRewardStatus(user) {
+  const xp = Math.max(0, Number(user.xp) || 0);
+  const info = levelProgressInfo(xp);
+  const claimed = Array.isArray(user.claimedLevelRewards) ? [...new Set(user.claimedLevelRewards.map(Number))].sort((a, b) => a - b) : [];
+  return { ...info, xp, claimed, rewards: LEVEL_REWARDS };
+}
+
 function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
   return { salt, hash: crypto.scryptSync(password, salt, 64).toString('hex') };
 }
@@ -155,6 +208,7 @@ let accountData = { users: {}, clans: {}, leaderboard: {}, recentDeaths: [], nex
 
 const DAILY_REWARD_ITEM_ID = 'skin_thor_stormforged';
 const PROFILE_FRAME_IDS = new Set(['frame_woodland', 'frame_iron', 'frame_emerald', 'frame_frost', 'frame_royal', 'frame_arcane', 'frame_storm', 'frame_obsidian']);
+const PROFILE_FREE_FRAME_IDS = new Set(['frame_woodland']);
 const PROFILE_FREE_SKIN_IDS = new Set(['wolf', 'default']);
 const DAILY_REWARDS = [
   { day: 1, kind: 'coins', amount: 100, label: '+100 Altın', icon: '🪙' },
@@ -299,6 +353,7 @@ function loadAccountData() {
           equippedItems: (u.equippedItems && typeof u.equippedItems === 'object') ? { ...u.equippedItems } : {},
           questProgress: (u.questProgress && typeof u.questProgress === 'object') ? { ...u.questProgress } : {},
           claimedQuests: Array.isArray(u.claimedQuests) ? [...new Set(u.claimedQuests)] : [],
+          claimedLevelRewards: Array.isArray(u.claimedLevelRewards) ? [...new Set(u.claimedLevelRewards.map(Number).filter(level => level >= 1 && level <= 50))] : [],
           dailyReward: normalizeDailyRewardState(u.dailyReward),
           settings: (u.settings && typeof u.settings === 'object') ? { ...u.settings } : {},
           createdAt: u.createdAt || Date.now(),
@@ -365,7 +420,8 @@ function publicUser(user) {
     rankIcon: rInfo.icon,
     nextRankName: rInfo.rankId < RANKS.length - 1 ? RANK_NAMES[rInfo.rankId + 1] : null,
     nextRankIcon: rInfo.nextIcon,
-    level: rInfo.level,
+    level: progressionLevel(user.xp || 0),
+    rankLevel: rInfo.level,
     score: user.score || 0,
     bestScore: user.bestScore || user.score || 0,
     kills: user.kills || 0,
@@ -384,6 +440,7 @@ function publicUser(user) {
     gold: user.coins ?? 1500,
     questProgress: user.questProgress || {},
     claimedQuests: user.claimedQuests || [],
+    claimedLevelRewards: levelRewardStatus(user).claimed,
     quests: QUESTS_LIST
   };
 }
@@ -395,7 +452,8 @@ function profileResponse(user) {
     user: publicUser(user),
     rank,
     nextRank,
-    level: rank.level,
+    level: progressionLevel(user.xp || 0),
+    rankLevel: rank.level,
     xp: user.xp || 0,
     xpProgress: rank.xpProgress,
     xpToNextRank: rank.xpToNextRank,
@@ -634,6 +692,7 @@ async function handleApi(request, response, requestPath) {
       gold: initCoins,
       ownedItems: Array.isArray(body.initialOwnedItems) ? [...new Set(body.initialOwnedItems)] : [],
       equippedItems: (body.initialEquippedItems && typeof body.initialEquippedItems === 'object') ? { ...body.initialEquippedItems } : {},
+      claimedLevelRewards: [],
       dailyReward: normalizeDailyRewardState(null),
       settings: (body.initialSettings && typeof body.initialSettings === 'object') ? { ...body.initialSettings } : {},
       createdAt: Date.now(),
@@ -700,6 +759,44 @@ async function handleApi(request, response, requestPath) {
     } else {
       sendJson(response, 200, profileResponse(user));
     }
+    return true;
+  }
+  if (requestPath === '/api/level-rewards' && request.method === 'GET') {
+    if (!user) sendJson(response, 401, { error: 'Seviye ödülleri için giriş yapmalısınız.' });
+    else sendJson(response, 200, { levelRewards: levelRewardStatus(user) });
+    return true;
+  }
+  if (requestPath === '/api/level-rewards/claim' && request.method === 'POST') {
+    if (!user) {
+      sendJson(response, 401, { error: 'Seviye ödülü almak için giriş yapmalısınız.' });
+      return true;
+    }
+    const status = levelRewardStatus(user);
+    const level = Number(body.level);
+    const reward = LEVEL_REWARDS.find(item => item.level === level);
+    if (!reward || !Number.isSafeInteger(level)) {
+      sendJson(response, 400, { error: 'Geçersiz seviye ödülü.', levelRewards: status });
+      return true;
+    }
+    if (level > status.level) {
+      sendJson(response, 403, { error: 'Bu seviye henüz kilitli.', levelRewards: status });
+      return true;
+    }
+    user.claimedLevelRewards = Array.isArray(user.claimedLevelRewards) ? [...new Set(user.claimedLevelRewards.map(Number))] : [];
+    if (user.claimedLevelRewards.includes(level)) {
+      sendJson(response, 409, { error: 'Bu seviye ödülü zaten alındı.', levelRewards: status });
+      return true;
+    }
+    if (reward.kind === 'coins') {
+      user.coins = (user.coins || 0) + reward.amount;
+      user.gold = user.coins;
+    } else {
+      user.ownedItems = [...new Set([...(user.ownedItems || []), reward.itemId])];
+    }
+    user.claimedLevelRewards.push(level);
+    user.claimedLevelRewards.sort((a, b) => a - b);
+    saveAccountData(true);
+    sendJson(response, 200, { ok: true, reward, levelRewards: levelRewardStatus(user), user: publicUser(user) });
     return true;
   }
   if (requestPath === '/api/daily-rewards' && request.method === 'GET') {
@@ -892,6 +989,10 @@ async function handleApi(request, response, requestPath) {
       if (cat) {
         if (cat === 'profileFrame' && !PROFILE_FRAME_IDS.has(item)) {
           sendJson(response, 400, { error: 'Geçersiz profil çerçevesi.' });
+          return true;
+        }
+        if (cat === 'profileFrame' && !PROFILE_FREE_FRAME_IDS.has(item) && !(user.ownedItems || []).includes(item)) {
+          sendJson(response, 403, { error: 'Bu profil çerçevesi henüz açılmadı.' });
           return true;
         }
         if (cat === 'profileAvatar' && !PROFILE_FREE_SKIN_IDS.has(item) && !(user.ownedItems || []).includes(item)) {

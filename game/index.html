@@ -738,7 +738,11 @@
                         <span id="header-rank" class="text-[9px] font-black text-[#F7C02D] leading-none">Lv.1 Tohum</span>
                     </div>
                 </button>
-                <div id="header-profile-hud" class="hidden sm:flex items-center gap-2 panel-inset px-2.5 py-1 border-[2px] min-w-[190px]" aria-label="Profil durumu">
+                <button id="header-mobile-level-btn" type="button" onclick="openLevelRewardsModal(); playSfx('click')" class="sm:hidden btn-3d bg-[#123653] border-[#7bd8ff] px-2 py-1 flex flex-col items-center justify-center leading-none min-w-[42px]" title="Seviye ödülleri">
+                    <span class="text-[8px] text-[#b9d9e8] font-black">LEVEL</span>
+                    <span id="header-mobile-level" class="font-io text-xs text-white">1</span>
+                </button>
+                <button id="header-profile-hud" type="button" onclick="openLevelRewardsModal(); playSfx('click')" class="hidden sm:flex items-center gap-2 panel-inset px-2.5 py-1 border-[2px] min-w-[190px] cursor-pointer hover:brightness-110" aria-label="Seviye ödüllerini aç">
                     <div class="flex flex-col min-w-0 leading-none">
                         <span id="header-profile-name" class="font-io text-[10px] text-white truncate max-w-[92px]">Oyuncu</span>
                         <span id="header-profile-id" class="text-[8px] text-white/60 font-black">ID: --</span>
@@ -750,7 +754,7 @@
                         </div>
                         <span id="header-xp-text" class="text-[7px] text-[#d8f7aa] text-center font-black">0 XP</span>
                     </div>
-                </div>
+                </button>
                 <div class="panel-inset px-2.5 py-1 flex items-center gap-1.5 border-[2px]">
                     <i class="fa-solid fa-coins text-yellow-400 text-xs"></i>
                     <span id="header-gold" class="font-io text-xs text-[#FFDF73] stroke-text">1,500</span>
@@ -1088,7 +1092,28 @@
             </div>
         </div>
 
-        <!-- 4. AYARLAR MODALI -->
+        <!-- 4. SEVİYE ÖDÜLLERİ MODALI -->
+        <div id="levelRewardsModal" class="panel-wood w-full max-w-[760px] hidden flex-col relative modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header-bar">
+                <div class="modal-badge-title"><i class="fa-solid fa-road text-sm"></i> LEVEL ROAD</div>
+                <button onclick="closeAllModals()" class="modal-close-btn" title="Kapat">✕</button>
+            </div>
+            <div class="panel-inset p-3 sm:p-5 mt-1 flex flex-col gap-3">
+                <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+                    <div>
+                        <div id="level-road-title" class="font-io text-xl sm:text-2xl text-white stroke-text">SEVİYE YOLU</div>
+                        <div id="level-road-subtitle" class="text-[10px] sm:text-xs font-black text-[#b9d9e8]">Ödüller yükleniyor...</div>
+                    </div>
+                    <div id="level-road-counter" class="font-io text-sm text-[#f7c02d]">LV.1 / 50</div>
+                </div>
+                <div class="h-4 rounded-full bg-black/70 border-2 border-[#1f1108] overflow-hidden shadow-inner">
+                    <div id="level-road-progress" class="h-full bg-gradient-to-r from-[#36c7ff] via-[#7bd8ff] to-[#f7c02d] transition-all duration-500" style="width:0%"></div>
+                </div>
+                <div id="level-rewards-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 max-h-[58vh] overflow-y-auto pr-1"></div>
+            </div>
+        </div>
+
+        <!-- 5. AYARLAR MODALI -->
         <div id="settingsModal" class="panel-wood w-full max-w-[620px] hidden flex-col relative modal-content" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
                 <div class="modal-badge-title"><i class="fa-solid fa-gear text-sm"></i> SETTINGS</div>
@@ -1637,7 +1662,7 @@
         });
 
         const PROFILE_FRAMES = [
-            { id: 'frame_woodland', name: 'Orman Oyma', rarity: 'common', border: '#9b5d29', accent: '#f6c56c', background: '#261309', motif: '✦' },
+            { id: 'frame_woodland', name: 'Orman Oyma', rarity: 'common', free: true, border: '#9b5d29', accent: '#f6c56c', background: '#261309', motif: '✦' },
             { id: 'frame_iron', name: 'Demir Nöbetçi', rarity: 'uncommon', border: '#91a4b2', accent: '#e8f6ff', background: '#18232b', motif: '◆' },
             { id: 'frame_emerald', name: 'Zümrüt Diken', rarity: 'rare', border: '#35d58c', accent: '#c5ffe7', background: '#082b20', motif: '❖' },
             { id: 'frame_frost', name: 'Buz Kristali', rarity: 'rare', border: '#65dcff', accent: '#e3fbff', background: '#082c45', motif: '✧' },
@@ -1808,7 +1833,11 @@
 
         function getProfileFrame() {
             const equipped = getProfileEquipped();
-            return PROFILE_FRAMES.find(frame => frame.id === equipped.profileFrame) || PROFILE_FRAMES[0];
+            return PROFILE_FRAMES.find(frame => frame.id === equipped.profileFrame && (frame.free || getOwnedItems().includes(frame.id))) || PROFILE_FRAMES[0];
+        }
+
+        function isProfileFrameOwned(frame) {
+            return Boolean(frame && (frame.free || getOwnedItems().includes(frame.id)));
         }
 
         function applyProfileFrame(frame = getProfileFrame()) {
@@ -1843,11 +1872,12 @@
             const emptyEl = document.getElementById('profile-avatar-empty');
             if (!frameGrid || !avatarGrid) return;
             const equipped = getProfileEquipped();
-            const activeFrame = equipped.profileFrame || PROFILE_FRAMES[0].id;
+            const activeFrame = getProfileFrame().id;
             const ownedSkins = REAL_SKINS.filter(isItemOwned);
             frameGrid.innerHTML = PROFILE_FRAMES.map(frame => {
                 const active = frame.id === activeFrame;
-                return `<button type="button" title="${frame.name}" onclick="equipProfileCosmetic('profileFrame','${frame.id}')" class="h-11 rounded-lg border-2 flex flex-col items-center justify-center transition-transform hover:scale-105 ${active ? 'ring-2 ring-white' : ''}" style="background:${frame.background};border-color:${frame.border};box-shadow:inset 0 0 0 2px ${frame.accent}55,0 0 8px ${frame.border}66"><span class="text-base leading-4" style="color:${frame.accent}">${frame.motif}</span><span class="text-[7px] font-black truncate w-full px-1" style="color:${frame.accent}">${frame.name}</span></button>`;
+                const owned = isProfileFrameOwned(frame);
+                return `<button type="button" ${owned ? '' : 'disabled'} title="${owned ? frame.name : 'Kilitli çerçeve'}" onclick="equipProfileCosmetic('profileFrame','${frame.id}')" class="h-11 rounded-lg border-2 flex flex-col items-center justify-center transition-transform ${owned ? 'hover:scale-105' : 'opacity-45 cursor-not-allowed'} ${active ? 'ring-2 ring-white' : ''}" style="background:${frame.background};border-color:${frame.border};box-shadow:inset 0 0 0 2px ${frame.accent}55,0 0 8px ${frame.border}66"><span class="text-base leading-4" style="color:${frame.accent}">${owned ? frame.motif : '🔒'}</span><span class="text-[7px] font-black truncate w-full px-1" style="color:${frame.accent}">${frame.name}</span></button>`;
             }).join('');
             avatarGrid.innerHTML = '';
             if (emptyEl) emptyEl.classList.toggle('hidden', ownedSkins.length > 0);
@@ -1996,7 +2026,7 @@
         /* ════════════════════════════════════════════════════════════════
            4. TOAST VE MODAL YÖNETİMİ
         ════════════════════════════════════════════════════════════════ */
-        const ALL_MODALS = ['loginModal', 'registerModal', 'profileModal', 'settingsModal', 'serverModal', 'cosmeticsModal', 'shopModal', 'leadersModal', 'partyModal', 'helpModal', 'newsModal'];
+        const ALL_MODALS = ['loginModal', 'registerModal', 'profileModal', 'levelRewardsModal', 'settingsModal', 'serverModal', 'cosmeticsModal', 'shopModal', 'leadersModal', 'partyModal', 'helpModal', 'newsModal'];
 
         function openModal(id) {
             const overlay = document.getElementById('modalOverlay');
@@ -2047,9 +2077,8 @@
             if (!hud || !user) return;
             const xp = Math.max(0, Number(user.xp ?? getPlayerTotalXp()) || 0);
             const rankId = getRankIdByXp(xp);
-            const currentBase = RANK_XP_THRESHOLDS[rankId] ?? 0;
-            const nextBase = RANK_XP_THRESHOLDS[Math.min(rankId + 1, RANK_XP_THRESHOLDS.length - 1)] ?? currentBase;
-            const percent = rankId >= RANK_XP_THRESHOLDS.length - 1 ? 100 : Math.round(Math.max(0, Math.min(1, (xp - currentBase) / Math.max(1, nextBase - currentBase))) * 100);
+            const levelInfo = getLevelInfo(xp);
+            const percent = Math.round(levelInfo.progress * 100);
             const nameEl = document.getElementById('header-profile-name');
             const idEl = document.getElementById('header-profile-id');
             const levelEl = document.getElementById('header-level');
@@ -2057,11 +2086,95 @@
             const xpText = document.getElementById('header-xp-text');
             if (nameEl) nameEl.textContent = String(user.username || 'Oyuncu');
             if (idEl) idEl.textContent = `ID: ${user.id ?? '--'}`;
-            if (levelEl) levelEl.textContent = RANKS[rankId] || 'Tohum';
+            if (levelEl) levelEl.textContent = `LV.${levelInfo.level}`;
+            const mobileLevelEl = document.getElementById('header-mobile-level');
+            if (mobileLevelEl) mobileLevelEl.textContent = levelInfo.level;
             if (xpBar) xpBar.style.width = `${percent}%`;
-            if (xpText) xpText.textContent = rankId >= RANK_XP_THRESHOLDS.length - 1 ? `${xp.toLocaleString()} XP` : `${xp.toLocaleString()} / ${nextBase.toLocaleString()} XP`;
+            if (xpText) xpText.textContent = levelInfo.maxLevel ? `${xp.toLocaleString()} XP` : `${xp.toLocaleString()} / ${levelInfo.nextXp.toLocaleString()} XP`;
             const hr = document.getElementById('header-rank');
             if (hr) hr.textContent = `${RANK_ICONS[rankId] || '🌱'} ${RANKS[rankId] || 'Savaşçı'}`;
+        }
+
+        let _levelRewardsState = null;
+        let _levelRewardClaiming = false;
+
+        function openLevelRewardsModal() {
+            openModal('levelRewardsModal');
+            loadLevelRewards();
+        }
+
+        function renderLevelRewards(status = null) {
+            const grid = document.getElementById('level-rewards-grid');
+            const counter = document.getElementById('level-road-counter');
+            const subtitle = document.getElementById('level-road-subtitle');
+            const progress = document.getElementById('level-road-progress');
+            if (!grid || !counter || !subtitle || !progress) return;
+            _levelRewardsState = status;
+            if (!_authToken || !status) {
+                counter.textContent = 'GİRİŞ GEREKLİ';
+                subtitle.textContent = 'İlerlemeni kaydetmek ve ödülleri almak için hesabına giriş yap.';
+                progress.style.width = '0%';
+                grid.innerHTML = '<div class="col-span-full rounded-xl border-2 border-dashed border-white/20 p-8 text-center text-white/60 font-black text-xs">Seviye yolunu görmek için giriş yap.</div>';
+                return;
+            }
+            counter.textContent = `LV.${status.level} / 50`;
+            subtitle.textContent = status.maxLevel ? `${status.xp.toLocaleString()} XP • Maksimum seviye` : `${status.xp.toLocaleString()} / ${status.nextXp.toLocaleString()} XP • ${status.xpToNext || status.nextXp - status.xp} XP kaldı`;
+            progress.style.width = `${Math.round(status.progress * 100)}%`;
+            const claimed = new Set(status.claimed || []);
+            grid.innerHTML = status.rewards.map(reward => {
+                const unlocked = reward.level <= status.level;
+                const isClaimed = claimed.has(reward.level);
+                const isCurrent = reward.level === status.level;
+                const tone = isClaimed ? 'border-[#79d138] bg-[#153d22] text-[#dcffd3]' : unlocked ? 'border-[#7bd8ff] bg-[#123653] text-white' : 'border-white/10 bg-black/30 text-white/45';
+                const badge = isClaimed ? 'ALINDI' : unlocked ? 'AÇIK' : 'KİLİTLİ';
+                const action = isClaimed ? '<span class="text-[#79d138] text-[10px] font-black">✓</span>' : `<button type="button" ${unlocked && !_levelRewardClaiming ? '' : 'disabled'} onclick="claimLevelReward(${reward.level})" class="rounded-md border border-white/20 px-2 py-1 text-[8px] font-black ${unlocked ? 'bg-[#f7c02d] text-[#251304]' : 'bg-black/30 text-white/35'}">${unlocked ? 'AL' : 'XP '+reward.xp}</button>`;
+                return `<article class="relative min-w-0 rounded-xl border-2 ${tone} p-2 flex flex-col gap-1.5 ${isCurrent ? 'ring-2 ring-[#f7c02d] shadow-[0_0_14px_rgba(247,192,45,.35)]' : ''}"><div class="flex items-center justify-between gap-1"><span class="font-io text-xs">LV.${reward.level}</span><span class="text-[7px] font-black tracking-wide">${badge}</span></div><div class="text-2xl text-center leading-8">${reward.icon}</div><div class="text-[9px] font-black text-center leading-tight min-h-[22px]">${reward.label}</div><div class="flex items-center justify-between gap-1 mt-auto"><span class="text-[8px] opacity-60">${reward.xp.toLocaleString()} XP</span>${action}</div></article>`;
+            }).join('');
+        }
+
+        async function loadLevelRewards() {
+            if (!_authToken) { renderLevelRewards(null); return; }
+            try {
+                const response = await fetch('/api/level-rewards', { headers: { 'Authorization': 'Bearer ' + _authToken } });
+                const data = await response.json();
+                renderLevelRewards(response.ok ? data.levelRewards : null);
+            } catch {
+                renderLevelRewards(null);
+            }
+        }
+
+        async function claimLevelReward(level) {
+            if (!_authToken || _levelRewardClaiming) return;
+            _levelRewardClaiming = true;
+            renderLevelRewards(_levelRewardsState);
+            try {
+                const response = await fetch('/api/level-rewards/claim', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _authToken },
+                    body: JSON.stringify({ level })
+                });
+                const data = await response.json();
+                if (data.levelRewards) renderLevelRewards(data.levelRewards);
+                if (!response.ok) throw new Error(data.error || 'Seviye ödülü alınamadı.');
+                if (data.user) {
+                    _authUser = data.user;
+                    _currentUser = data.user;
+                    localStorage.setItem('fb_auth_user', JSON.stringify(data.user));
+                    localStorage.setItem('fb_acc_owned', JSON.stringify(data.user.ownedItems || []));
+                    localStorage.setItem('fb_acc_equipped', JSON.stringify(data.user.equippedItems || {}));
+                    localStorage.setItem('fb_gold', String(data.user.coins ?? 0));
+                    updateHeaderProfile(data.user);
+                    updateGoldDisplays();
+                    triggerToast(`${data.reward.label} açıldı!`, 'fa-gift');
+                    playSfx('buy');
+                }
+            } catch (error) {
+                triggerToast(error.message || 'Seviye ödülü alınamadı.', 'fa-circle-exclamation');
+            } finally {
+                _levelRewardClaiming = false;
+                if (_levelRewardsState) renderLevelRewards(_levelRewardsState);
+                else loadLevelRewards();
+            }
         }
 
         function pingServer() {
@@ -2417,6 +2530,8 @@
         }
 
         const RANK_XP_THRESHOLDS = [0, 500, 1500, 3500, 7000, 12000, 20000, 35000, 60000, 100000, 180000, 300000];
+        const LEVEL_XP_THRESHOLDS = [0];
+        for (let level = 2; level <= 50; level++) LEVEL_XP_THRESHOLDS.push(Math.round(220 * Math.pow(level - 1, 1.78)));
 
         function getPlayerTotalXp() {
             if (_authUser && typeof _authUser.xp === 'number') return _authUser.xp;
@@ -2430,6 +2545,18 @@
                 else break;
             }
             return r;
+        }
+
+        function getLevelInfo(xp) {
+            let level = 1;
+            for (let index = 0; index < LEVEL_XP_THRESHOLDS.length; index++) {
+                if (xp >= LEVEL_XP_THRESHOLDS[index]) level = index + 1;
+                else break;
+            }
+            const currentXp = LEVEL_XP_THRESHOLDS[level - 1] || 0;
+            const nextXp = LEVEL_XP_THRESHOLDS[level] ?? currentXp;
+            const maxLevel = level >= LEVEL_XP_THRESHOLDS.length;
+            return { level, currentXp, nextXp, maxLevel, progress: maxLevel ? 1 : Math.max(0, Math.min(1, (xp - currentXp) / Math.max(1, nextXp - currentXp))) };
         }
 
         function getRankIconHtml(rankId) {
