@@ -1045,7 +1045,7 @@
             
             <div class="panel-inset p-4 sm:p-5 mt-1 flex flex-col gap-3">
                 <div class="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/15">
-                    <div id="prof-avatar-frame" class="relative w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-700 border-2 border-black flex items-center justify-center shadow-inner overflow-hidden">
+                    <div id="prof-avatar-frame" onclick="openProfileCosmeticsModal(); playSfx('click')" title="Profil cosmetics" class="relative w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-700 border-2 border-black flex items-center justify-center shadow-inner overflow-hidden cursor-pointer hover:brightness-125 transition">
                         <canvas id="prof-avatar-canvas" width="96" height="96" class="w-12 h-12 relative z-[1]" aria-label="Profil fotoğrafı"></canvas>
                         <span id="prof-avatar-motif" class="absolute inset-0 z-[2] flex items-start justify-center pt-0.5 text-[10px] font-black pointer-events-none">✦</span>
                     </div>
@@ -1136,7 +1136,33 @@
             </div>
         </div>
 
-        <!-- 4. SEVİYE ÖDÜLLERİ MODALI -->
+        <!-- 4. PROFİL COSMETICS MODALI -->
+        <div id="profileCosmeticsModal" class="panel-wood w-full max-w-[620px] hidden flex-col relative modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header-bar">
+                <div class="modal-badge-title"><i class="fa-solid fa-wand-magic-sparkles text-sm"></i> PROFILE COSMETICS</div>
+                <button onclick="closeAllModals()" class="modal-close-btn" title="Kapat">✕</button>
+            </div>
+            <div class="panel-inset p-3 sm:p-5 mt-1 flex flex-col gap-3">
+                <div class="flex items-center gap-3 rounded-xl border border-[#7bd8ff66] bg-[#071421] p-3">
+                    <div class="relative w-20 h-20 rounded-2xl flex items-center justify-center border-2 border-[#7bd8ff] shadow-[0_0_20px_rgba(123,216,255,.3)] overflow-hidden">
+                        <canvas id="profile-cosmetics-preview" width="120" height="120" class="w-[72px] h-[72px]"></canvas>
+                        <span id="profile-cosmetics-effect-mark" class="absolute top-1 right-1 text-sm pointer-events-none"></span>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="font-io text-lg text-white truncate">Profil görünümün</div>
+                        <div id="profile-cosmetics-current" class="text-[10px] text-[#b9d9e8] font-black truncate">Çerçeve ve efekt seç</div>
+                        <div class="text-[9px] text-white/50 font-black mt-1">Seçimin hesabına kaydedilir ve profilinde görünür.</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="profile-cosmetics-tab-frames" type="button" onclick="setProfileCosmeticsTab('frames')" class="btn-3d btn-play py-2 font-io text-xs">ÇERÇEVELER</button>
+                    <button id="profile-cosmetics-tab-effects" type="button" onclick="setProfileCosmeticsTab('effects')" class="btn-3d btn-action py-2 font-io text-xs">EFEKTLER</button>
+                </div>
+                <div id="profile-cosmetics-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[48vh] overflow-y-auto pr-1"></div>
+            </div>
+        </div>
+
+        <!-- 5. SEVİYE ÖDÜLLERİ MODALI -->
         <div id="levelRewardsModal" class="panel-wood w-full max-w-[760px] hidden flex-col relative modal-content" onclick="event.stopPropagation()">
             <div class="modal-header-bar">
                 <div class="modal-badge-title"><i class="fa-solid fa-road text-sm"></i> LEVEL ROAD</div>
@@ -1716,6 +1742,16 @@
             { id: 'frame_obsidian', name: 'Obsidyen Taç', rarity: 'legendary', border: '#ff7b5c', accent: '#ffd6c9', background: '#210d16', motif: '♢' }
         ];
 
+        const PROFILE_EFFECTS = [
+            { id: 'effect_none', name: 'Efektsiz', rarity: 'common', icon: '○', colors: ['#a9b7c5', '#52606d'] },
+            { id: 'effect_sparks', name: 'Kıvılcım Halkası', rarity: 'uncommon', icon: '✦', colors: ['#fff4a8', '#ffb52e'] },
+            { id: 'effect_frost', name: 'Buz Nefesi', rarity: 'rare', icon: '❄', colors: ['#e6fbff', '#56cfff'] },
+            { id: 'effect_embers', name: 'Köz Parçaları', rarity: 'rare', icon: '✹', colors: ['#ffe1a1', '#ff542e'] },
+            { id: 'effect_arcane', name: 'Arcane Rün', rarity: 'epic', icon: '✧', colors: ['#f0c8ff', '#9c4dff'] },
+            { id: 'effect_storm', name: 'Fırtına Çemberi', rarity: 'legendary', icon: 'ϟ', colors: ['#efffff', '#64cfff'] },
+            { id: 'effect_gold', name: 'Altın Aura', rarity: 'legendary', icon: '✺', colors: ['#fff5a6', '#f0a928'] }
+        ];
+
         function decorateRarityCard(card, item) {
             const rarity = RARITY_META[item?.rarity] ? item.rarity : 'common';
             const meta = RARITY_META[rarity];
@@ -1884,6 +1920,104 @@
             return Boolean(frame && (frame.free || getOwnedItems().includes(frame.id)));
         }
 
+        let _profileCosmeticsTab = 'frames';
+
+        function getProfileEffect() {
+            const equipped = getProfileEquipped();
+            return PROFILE_EFFECTS.find(effect => effect.id === equipped.profileEffect && (effect.id === 'effect_none' || getOwnedItems().includes(effect.id))) || PROFILE_EFFECTS[0];
+        }
+
+        function isProfileEffectOwned(effect) {
+            return Boolean(effect && (effect.id === 'effect_none' || getOwnedItems().includes(effect.id)));
+        }
+
+        function drawProfileEffect(context, effectId, cx, cy, radius, time) {
+            const effect = PROFILE_EFFECTS.find(item => item.id === effectId);
+            if (!context || !effect || effect.id === 'effect_none') return;
+            const [bright, base] = effect.colors;
+            context.save(); context.translate(cx, cy); context.lineCap = 'round';
+            const pulse = .86 + Math.sin(time * .004) * .14;
+            context.shadowColor = bright; context.shadowBlur = 14 * pulse;
+            if (effect.id === 'effect_sparks' || effect.id === 'effect_embers' || effect.id === 'effect_gold') {
+                for (let index = 0; index < 14; index++) {
+                    const angle = time * (effect.id === 'effect_embers' ? .001 : .0018) + index * Math.PI * 2 / 14;
+                    const distance = radius * (1.08 + Math.sin(time * .003 + index) * .13);
+                    const size = radius * (effect.id === 'effect_gold' ? .055 : .04 + (index % 3) * .012);
+                    context.fillStyle = index % 2 ? base : bright;
+                    context.globalAlpha = .45 + (Math.sin(time * .005 + index) + 1) * .22;
+                    context.beginPath(); context.arc(Math.cos(angle) * distance, Math.sin(angle) * distance, size, 0, Math.PI * 2); context.fill();
+                }
+            } else if (effect.id === 'effect_frost') {
+                context.strokeStyle = bright; context.globalAlpha = .75; context.lineWidth = 2;
+                context.beginPath(); context.arc(0, 0, radius * 1.18, 0, Math.PI * 2); context.stroke();
+                for (let index = 0; index < 6; index++) {
+                    const angle = index * Math.PI / 3 + time * .0005;
+                    const x = Math.cos(angle) * radius * 1.15, y = Math.sin(angle) * radius * 1.15;
+                    context.fillStyle = index % 2 ? bright : base; context.font = `${Math.max(10, radius * .25)}px sans-serif`; context.fillText('❄', x - 6, y + 5);
+                }
+            } else if (effect.id === 'effect_arcane') {
+                context.strokeStyle = bright; context.globalAlpha = .7; context.lineWidth = 2;
+                context.beginPath(); context.arc(0, 0, radius * 1.2, time * .001, time * .001 + Math.PI * 1.25); context.stroke();
+                context.strokeStyle = base; context.globalAlpha = .55; context.beginPath(); context.arc(0, 0, radius * 1.34, -time * .001, -time * .001 + Math.PI * 1.1); context.stroke();
+            } else if (effect.id === 'effect_storm') {
+                context.strokeStyle = bright; context.globalAlpha = .82; context.lineWidth = 2.5;
+                context.beginPath(); context.arc(0, 0, radius * 1.2, time * .002, time * .002 + Math.PI * 1.7); context.stroke();
+                context.strokeStyle = base; context.lineWidth = 1.5;
+                for (let index = 0; index < 4; index++) { const angle = time * .001 + index * Math.PI / 2; context.beginPath(); context.moveTo(Math.cos(angle) * radius * 1.12, Math.sin(angle) * radius * 1.12); context.lineTo(Math.cos(angle + .18) * radius * 1.42, Math.sin(angle + .18) * radius * 1.42); context.lineTo(Math.cos(angle + .31) * radius * 1.22, Math.sin(angle + .31) * radius * 1.22); context.stroke(); }
+            }
+            context.globalAlpha = 1; context.shadowBlur = 0; context.restore();
+        }
+
+        function openProfileCosmeticsModal() {
+            if (!_authToken) { openModal('loginModal'); return; }
+            openModal('profileCosmeticsModal');
+            renderProfileCosmeticsTab();
+        }
+
+        function setProfileCosmeticsTab(tab) {
+            _profileCosmeticsTab = tab === 'effects' ? 'effects' : 'frames';
+            renderProfileCosmeticsTab();
+            playSfx('click');
+        }
+
+        function renderProfileCosmeticsTab() {
+            const grid = document.getElementById('profile-cosmetics-grid');
+            if (!grid) return;
+            const frameTab = document.getElementById('profile-cosmetics-tab-frames');
+            const effectTab = document.getElementById('profile-cosmetics-tab-effects');
+            if (frameTab) frameTab.className = `btn-3d ${_profileCosmeticsTab === 'frames' ? 'btn-play' : 'btn-action'} py-2 font-io text-xs`;
+            if (effectTab) effectTab.className = `btn-3d ${_profileCosmeticsTab === 'effects' ? 'btn-play' : 'btn-action'} py-2 font-io text-xs`;
+            if (_profileCosmeticsTab === 'frames') {
+                const active = getProfileFrame().id;
+                grid.innerHTML = PROFILE_FRAMES.map(frame => {
+                    const owned = isProfileFrameOwned(frame), selected = active === frame.id;
+                    return `<button type="button" ${owned ? '' : 'disabled'} onclick="equipProfileCosmetic('profileFrame','${frame.id}')" class="min-w-0 rounded-xl border-2 p-3 text-center ${selected ? 'ring-2 ring-white' : ''} ${owned ? 'hover:brightness-125' : 'opacity-40 cursor-not-allowed'}" style="background:${frame.background};border-color:${frame.border};box-shadow:inset 0 0 0 2px ${frame.accent}55"><div class="text-2xl" style="color:${frame.accent}">${owned ? frame.motif : '🔒'}</div><div class="font-io text-[10px] truncate" style="color:${frame.accent}">${frame.name}</div><div class="text-[8px] font-black text-white/60">${owned ? 'KULLAN' : 'KİLİTLİ'}</div></button>`;
+                }).join('');
+            } else {
+                const active = getProfileEffect().id;
+                grid.innerHTML = PROFILE_EFFECTS.map(effect => {
+                    const owned = isProfileEffectOwned(effect), selected = active === effect.id;
+                    return `<button type="button" ${owned ? '' : 'disabled'} onclick="equipProfileCosmetic('profileEffect','${effect.id}')" class="min-w-0 rounded-xl border-2 p-3 text-center ${selected ? 'ring-2 ring-white' : ''} ${owned ? 'hover:brightness-125' : 'opacity-40 cursor-not-allowed'}" style="background:radial-gradient(circle,${effect.colors[1]}55,#071421);border-color:${effect.colors[0]}"><div class="text-2xl" style="color:${effect.colors[0]}">${owned ? effect.icon : '🔒'}</div><div class="font-io text-[10px] truncate" style="color:${effect.colors[0]}">${effect.name}</div><div class="text-[8px] font-black text-white/60">${owned ? 'KULLAN' : 'KİLİTLİ'}</div></button>`;
+                }).join('');
+            }
+            renderProfileCosmeticsPreview();
+        }
+
+        function renderProfileCosmeticsPreview() {
+            const canvas = document.getElementById('profile-cosmetics-preview');
+            const current = document.getElementById('profile-cosmetics-current');
+            const mark = document.getElementById('profile-cosmetics-effect-mark');
+            if (!canvas) return;
+            const context = canvas.getContext('2d'); context.clearRect(0, 0, canvas.width, canvas.height);
+            const frame = getProfileFrame(), effect = getProfileEffect(), skin = getProfileAvatarSkin();
+            drawProfileEffect(context, effect.id, 60, 60, 44, performance.now());
+            drawExactInGamePlayer(context, 60, 76, skin.id, _equippedWeapon, _animFrame, .58);
+            const frameEl = canvas.parentElement;
+            if (frameEl) { frameEl.style.borderColor = frame.border; frameEl.style.boxShadow = `0 0 20px ${frame.border}88, inset 0 0 0 2px ${frame.accent}66`; }
+            if (current) current.textContent = `${frame.name} • ${effect.name} • ${skin.name}`;
+            if (mark) { mark.textContent = effect.icon; mark.style.color = effect.colors[0]; }
+        }
+
         function applyProfileFrame(frame = getProfileFrame()) {
             const frameEl = document.getElementById('prof-avatar-frame');
             const nameEl = document.getElementById('profile-frame-name');
@@ -1904,10 +2038,12 @@
             if (canvas && skin) {
                 const context = canvas.getContext('2d');
                 context.clearRect(0, 0, canvas.width, canvas.height);
+                drawProfileEffect(context, getProfileEffect().id, 48, 48, 34, performance.now());
                 drawExactInGamePlayer(context, 48, 63, skin.id, _equippedWeapon, _animFrame, .52);
             }
             if (nameEl && skin) nameEl.textContent = skin.name;
             applyProfileFrame();
+            renderProfileCosmeticsPreview();
         }
 
         function renderProfileCosmetics() {
@@ -1953,6 +2089,7 @@
             const next = { ...previous, [category]: itemId };
             localStorage.setItem('fb_acc_equipped', JSON.stringify(next));
             renderProfileCosmetics();
+            renderProfileCosmeticsTab();
             try {
                 const response = await fetch('/api/shop/equip', {
                     method: 'PUT',
@@ -1966,10 +2103,12 @@
                 _authUser = { ...(_authUser || {}), equippedItems: equipped };
                 localStorage.setItem('fb_auth_user', JSON.stringify(_authUser));
                 renderProfileCosmetics();
-                triggerToast(category === 'profileFrame' ? 'Profil çerçevesi kaydedildi.' : 'Profil fotoğrafı kaydedildi.', 'fa-circle-check');
+                renderProfileCosmeticsTab();
+                triggerToast(category === 'profileFrame' ? 'Profil çerçevesi kaydedildi.' : category === 'profileEffect' ? 'Profil efekti kaydedildi.' : 'Profil fotoğrafı kaydedildi.', 'fa-circle-check');
             } catch (error) {
                 localStorage.setItem('fb_acc_equipped', JSON.stringify(previous));
                 renderProfileCosmetics();
+                renderProfileCosmeticsTab();
                 triggerToast(error.message || 'Profil kozmetiği kaydedilemedi.', 'fa-circle-exclamation');
             }
         }
@@ -2070,7 +2209,7 @@
         /* ════════════════════════════════════════════════════════════════
            4. TOAST VE MODAL YÖNETİMİ
         ════════════════════════════════════════════════════════════════ */
-        const ALL_MODALS = ['loginModal', 'registerModal', 'profileModal', 'levelRewardsModal', 'dailyRewardPreviewModal', 'settingsModal', 'serverModal', 'cosmeticsModal', 'shopModal', 'leadersModal', 'partyModal', 'helpModal', 'newsModal'];
+        const ALL_MODALS = ['loginModal', 'registerModal', 'profileModal', 'profileCosmeticsModal', 'levelRewardsModal', 'dailyRewardPreviewModal', 'settingsModal', 'serverModal', 'cosmeticsModal', 'shopModal', 'leadersModal', 'partyModal', 'helpModal', 'newsModal'];
 
         function openModal(id) {
             const overlay = document.getElementById('modalOverlay');

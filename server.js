@@ -156,14 +156,20 @@ const LEVEL_REWARDS = Array.from({ length: 50 }, (_, index) => {
   const level = index + 1;
   const specialRewards = {
     5: { kind: 'item', itemId: 'skin_emerald', label: 'Zümrüt Avcısı', icon: '🟢' },
+    8: { kind: 'item', itemId: 'effect_sparks', label: 'Kıvılcım Halkası', icon: '✦' },
     10: { kind: 'item', itemId: 'skin_sapphire', label: 'Safir Savaşçı', icon: '🔷' },
+    13: { kind: 'item', itemId: 'effect_embers', label: 'Köz Parçaları', icon: '✹' },
     15: { kind: 'item', itemId: 'skin_storm', label: 'Fırtına Ruhu', icon: '🌪️' },
+    18: { kind: 'item', itemId: 'effect_frost', label: 'Buz Nefesi', icon: '❄' },
     20: { kind: 'item', itemId: 'skin_shadow', label: 'Gölge Pençesi', icon: '🌑' },
     25: { kind: 'item', itemId: 'skin_thunder', label: 'Gök Gürültüsü', icon: '⚡' },
+    28: { kind: 'item', itemId: 'effect_arcane', label: 'Arcane Rün', icon: '✧' },
     30: { kind: 'item', itemId: 'skin_chroma', label: 'Kroma Şampiyonu', icon: '🌈' },
     35: { kind: 'item', itemId: 'skin_thor_stormforged', label: 'Thor: Fırtına Zırhı', icon: '🔨' },
+    38: { kind: 'item', itemId: 'effect_storm', label: 'Fırtına Çemberi', icon: 'ϟ' },
     40: { kind: 'item', itemId: 'ba_tier_3', label: 'Altın Balta', icon: '🪓' },
     45: { kind: 'item', itemId: 'ki_tier_4', label: 'Obsidyen Kılıç', icon: '🗡️' },
+    48: { kind: 'item', itemId: 'effect_gold', label: 'Altın Aura', icon: '✺' },
     50: { kind: 'profileFrame', itemId: 'frame_storm', label: 'Fırtına Mührü Çerçevesi', icon: 'ϟ' }
   };
   return { level, xp: LEVEL_XP_THRESHOLDS[index], ...(specialRewards[level] || { kind: 'coins', amount: 75 + level * 35, label: `+${75 + level * 35} Altın`, icon: '🪙' }) };
@@ -209,6 +215,8 @@ let accountData = { users: {}, clans: {}, leaderboard: {}, recentDeaths: [], nex
 const DAILY_REWARD_ITEM_ID = 'skin_thor_stormforged';
 const PROFILE_FRAME_IDS = new Set(['frame_woodland', 'frame_iron', 'frame_emerald', 'frame_frost', 'frame_royal', 'frame_arcane', 'frame_storm', 'frame_obsidian']);
 const PROFILE_FREE_FRAME_IDS = new Set(['frame_woodland']);
+const PROFILE_EFFECT_IDS = new Set(['effect_none', 'effect_sparks', 'effect_frost', 'effect_embers', 'effect_arcane', 'effect_storm', 'effect_gold']);
+const PROFILE_FREE_EFFECT_IDS = new Set(['effect_none']);
 const PROFILE_FREE_SKIN_IDS = new Set(['wolf', 'default']);
 const DAILY_REWARDS = [
   { day: 1, kind: 'coins', amount: 100, label: '+100 Altın', icon: '🪙' },
@@ -993,6 +1001,14 @@ async function handleApi(request, response, requestPath) {
         }
         if (cat === 'profileFrame' && !PROFILE_FREE_FRAME_IDS.has(item) && !(user.ownedItems || []).includes(item)) {
           sendJson(response, 403, { error: 'Bu profil çerçevesi henüz açılmadı.' });
+          return true;
+        }
+        if (cat === 'profileEffect' && !PROFILE_EFFECT_IDS.has(item)) {
+          sendJson(response, 400, { error: 'Geçersiz profil efekti.' });
+          return true;
+        }
+        if (cat === 'profileEffect' && !PROFILE_FREE_EFFECT_IDS.has(item) && !(user.ownedItems || []).includes(item)) {
+          sendJson(response, 403, { error: 'Bu profil efekti henüz açılmadı.' });
           return true;
         }
         if (cat === 'profileAvatar' && !PROFILE_FREE_SKIN_IDS.has(item) && !(user.ownedItems || []).includes(item)) {
